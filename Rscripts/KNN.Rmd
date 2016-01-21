@@ -91,3 +91,144 @@ write.csv(test_accuracy, file = "../predictions/knn_age_k1.csv",
 ```
 
 My score on Kaggle was 0.57416. This was my worst model to date. 
+
+## Functions to save time
+
+I'm realizing now that fitting different models could involve a lot of repetition, so I'll write some functions to save myself time. The following function can take different values of `k` and sets of `predictors`. Then it will fit a `knn`, generate the accuracy of the model in the training dataset, and write a file with predictions for the testing dataset to submit to Kaggle.
+
+```{r}
+my_knn <- function(k, predictors, out_file = NULL){
+  # Prep the training dataset
+  train_knn <- train[ , c("Survived", predictors)] 
+  train_knn <- train_knn[complete.cases(train_knn), ]
+  train_x <- as.data.frame(train_knn[ , predictors])
+  colnames(train_x) <- predictors
+  model_formula <- as.formula(paste("~", 
+                                    paste(predictors, collapse = " + ")))
+  train_x <- model.matrix(model_formula, data = train_x)[ , -1]
+  train_x <- apply(as.data.frame(train_x), 2, scale)  ## Scale predictors
+  train_y <- train_knn$Survived
+  
+  # Prep the testing dataset
+  test_x <- as.data.frame(test[ , predictors])
+  test_x <- as.data.frame(test_x[complete.cases(test_x), ])
+  colnames(test_x) <- predictors
+  test_x <- model.matrix(model_formula, data = test_x)[ , -1]
+  test_x <- apply(as.data.frame(test_x), 2, scale) ## Scale predictors
+  
+  # Fit knn for the training data and determine accuracy
+  set.seed(1201)
+  train_pred <- knn(train_x, train_x, train_y, k = k)
+  
+  x_accuracy <- data.frame(Survived = train$Survived,
+                           pred = factor("0", levels = c("0", "1")))
+  x_accuracy$pred[complete.cases(train[ , c("Survived", predictors)])] <-
+    train_pred
+  out <- mean(x_accuracy$Survived == x_accuracy$pred)
+  
+  # Format file name for output file
+  if(is.null(out_file)){  ## If out_file is not specified, generate
+    out_file <- paste("knn", paste(predictors, collapse = "_"), k,
+                      sep = "_")
+  }
+  out_file <- paste0("../predictions/", out_file, ".csv")
+  
+  # Fit knn for the testing data and write out file to submit to Kaggle
+  set.seed(1201)
+  test_pred <- knn(train_x, test_x, train_y, k = 1) 
+  test_accuracy <- data.frame(PassengerId = test$PassengerId,
+                              Survived = factor("0", levels = c("0", "1")))
+  test_accuracy$Survived[complete.cases(test[ , predictors])] <-
+    as.numeric(as.character(test_pred))
+  write.csv(test_accuracy, file = out_file, row.names = FALSE)
+  
+  return(paste("Accuracy in the training data is:", round(out, 5)))
+}
+```
+
+Now it's much easier to test some different knn models. For example, to fit a model with k = 1 with "Fare" as the predictor: 
+
+```{r}
+my_knn(k = 1, predictors = "Fare")
+```
+
+I now know the accuracy in the training dataset, and there's a new file in my `predictions` folder called "knn_Fare_1.csv" that I can submit to Kaggle. When I did, the accuracy was 0.64115. Again, with k = 1, there's a big reduction from the accuracy in testing to that in training.
+
+I can also use it to fit multiple predictors. For example, here's a model with Fare, Age, and SibSp (Number of Siblings/Spouses Aboard):
+
+```{r}
+my_knn(k = 5, predictors = c("Fare", "Age", "SibSp"))
+```
+
+The function wrote a file to "predictions" called "knn_Fare_Age_SibSp_5.csv". When I submitted this to Kaggle, the accuracy was 0.61244. 
+
+## Including categorical variables
+
+The function `knn` seems pretty picky about including categorical variables in the model. Also, you can't `scale` categorical variables easily while they're still as a single column of factors. That's okay, though. 
+
+To make categorical variables work, you can use `model.matrix`, which can take a formula statement and returns the matrix that you'd want to put into a model, with all categorical variables converted to one or more columns of indicator variables. For example, if you were interested in fitting `Sex` and `Pclass`, here's what model matrix would do:
+
+```{r}
+ex <- model.matrix(~ Sex + Pclass, data = train)
+head(ex, 3)
+
+# Take of intercept column (always first column)
+ex <- ex[ , -1]
+head(ex, 3)
+```
+
+You can scale this just like a numerical variable now. 
+
+So, for example, to fit a model with `Sex` and `Pclass` with `k = 5`, you could run the following code:
+
+```{r}
+# Set up choices
+predictors <- c("Sex", "Pclass")
+k <- 5
+
+# Limit to complete cases with the outcome and selected predictors
+train_knn <- train[ , c("Survived", predictors)] 
+train_knn <- train_knn[complete.cases(train_knn), ]
+train_x <- as.data.frame(train_knn[ , predictors])
+
+# Convert to the model matrix to handle categorical variables
+colnames(train_x) <- predictors
+(model_formula <- as.formula(paste("~", 
+                                paste(predictors, collapse = " + "))))
+train_x <- model.matrix(model_formula, data = train_x)[ , -1]
+head(train_x, 3)
+
+# Scale predictors
+train_x <- apply(train_x, 2, scale)
+head(train_x, 3)
+
+# Create vector of outcomes
+train_y <- train_knn$Survived
+
+# Fit model
+set.seed(1201)
+train_pred <- knn(train_x, train_x, train_y, k = k)
+
+# Assess accuracy in training data
+# Start with merging back into the full dataset (including with missing
+# observations)
+x_accuracy <- data.frame(Survived = train$Survived,
+                           pred = factor("0", levels = c("0", "1")))
+x_accuracy$pred[complete.cases(train[ , c("Survived", predictors)])] <-
+    train_pred
+
+# Calculate accuracy
+out <- mean(x_accuracy$Survived == x_accuracy$pred)
+```
+
+All of this is set up in the function I wrote, so you could just run:
+
+```{r}
+my_knn(k = 5, predictors = c("Sex", "Pclass"))
+```
+
+When I ran this through Kaggle, the accuracy was 0.76555, which was my best score yet. 
+
+## Role of `k` choice
+
+Next, I tried 

@@ -15,3 +15,6 @@ Class, Sex, Embarked | 0.77778 | 0.73684
 Kitchen Sink | 0.80247 | 0.67464
 **k-Nearest Neighbors** | | 
 Age, k = 1 | 0.67677 | 0.57416 
+Fare, k = 1 | 0.80696 | 0.64115
+Age, Fare, SibSp, k = 5 | 0.76431 | 0.61244
+Sex, Pclass, k = 5 | 0.77441 | 0.76555
