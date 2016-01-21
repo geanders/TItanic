@@ -2,7 +2,7 @@
 title: "EDA, Titanic training data"
 author: "Brooke Anderson"
 date: "December 14, 2015"
-output: html_document
+output: pdf_document
 ---
 
 ```{r echo = FALSE, message = FALSE}

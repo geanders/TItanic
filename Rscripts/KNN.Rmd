@@ -2,7 +2,7 @@
 title: "K-Nearest Neighbors"
 author: "Brooke Anderson"
 date: "January 20, 2016"
-output: html_document
+output: pdf_document
 ---
 
 ```{r echo = FALSE, message = FALSE}
