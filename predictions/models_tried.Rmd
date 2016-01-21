@@ -1,0 +1,17 @@
+---
+title: "Results to date"
+author: "Brooke Anderson"
+date: "January 20, 2016"
+output: html_document
+---
+
+Model     | Training accuracy | Testing Accuracy
+----------|-------------------|-----------------
+**Null model** | 0.6161616 | 0.62679
+**Naive Bayes** |   |    
+Passenger class | 0.67901 | 0.65550
+Age | 0.617284 | 0.62201
+Class, Sex, Embarked | 0.77778 | 0.73684
+Kitchen Sink | 0.80247 | 0.67464
+**k-Nearest Neighbors** | | 
+Age, k = 1 | 0.67677 | 0.57416 

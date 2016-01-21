@@ -1,0 +1,335 @@
+---
+title: "EDA, Titanic training data"
+author: "Brooke Anderson"
+date: "December 14, 2015"
+output: html_document
+---
+
+```{r echo = FALSE, message = FALSE}
+knitr::opts_knit$set(fig.path = '../figures/EDA-')
+```
+
+Load some packages I'll be using:
+
+```{r message = FALSE}
+library(ggplot2)
+library(ggthemes)
+library(stringr)
+library(dplyr)
+library(stats)
+library(tidyr)
+```
+
+
+Load the Titanic training data (I have it in a `data` directory in the parent directory for this file):
+
+```{r}
+train <- read.csv("../data/train.csv")
+```
+
+There are `r nrow(train)` observations. 
+
+```{r}
+nrow(train)
+```
+
+Each observation is a passenger on the Titanic. The features for each passenger are: 
+
+```{r}
+colnames(train)
+```
+
+The `PassengerId` is a unique identifier for each passenger.
+
+```{r}
+head(train$PassengerId)
+length(unique(train$PassengerId)) == nrow(train)  # Check for duplicates
+```
+
+`Survived` is a binary variable of whether the passenger survived (`1`) or died (`0`). In the training data, about `r round(100 * sum(train$Survived) / nrow(train))`% of the passengers survived. 
+
+```{r}
+table(train$Survived)
+round(100 * prop.table(table(train$Survived)))
+```
+
+`Pclass` gives the passenger's ticket class. There are three options: 1st, 2nd, and 3rd class:
+
+```{r}
+table(train$Pclass)
+```
+
+More of the passengers in `train` were in 3rd class than 1st or 2nd class. Most of the passengers in 3rd class died, most in the 1st class survived, and about an even number in the 2nd class died and survived. 
+
+```{r fig.width = 5, fig.height = 3}
+ggplot(train, aes(x = factor(Pclass, levels = c(1, 2, 3),
+                             labels = c("1st", "2nd", "3rd")),
+                  fill = factor(Survived, levels = c(0, 1),
+                                labels = c("Died", "Survived")))) + 
+        geom_bar() + 
+        coord_flip() +  
+        scale_x_discrete("", 
+                         limits=c("3rd","2nd","1st")) + 
+        ylab("# of passengers") + 
+        theme_few() + #  Uses `ggtheme` package
+        theme(legend.title = element_blank(),
+              legend.position = "top")
+```
+
+`Name` gives the passenger's name:
+
+```{r}
+train$Name <- as.character(train$Name) # No reason for these to be factors
+sample(train$Name, 5)
+```
+
+You can pull more out of this variable. For example, you can pull out each passenger's honorific and create a new column in `train` with that. 
+
+```{r}
+honorific <- str_extract(train$Name, ",\\ .+?\\.") # Uses `stringr` package
+honorific <- gsub("[\\,\\.\\ ]", "", honorific)
+train <- cbind(train, honorific)
+```
+
+```{r fig.width = 6, fig.height = 4}
+(hon_count <- group_by(train, honorific) %>%  # Uses `dplyr` package
+        summarize(n = n()) %>%
+        arrange(desc(n)))
+ggplot(train, aes(x = factor(honorific, levels = rev(hon_count$honorific)),
+                  fill = factor(Survived, levels = c(0, 1),
+                                labels = c("Died", "Survived")))) + 
+        geom_bar() + 
+        xlab("") + 
+        ylab("# of passengers") + 
+        coord_flip() + 
+        theme_few() + 
+        theme(legend.title = element_blank(),
+              legend.position = "top")
+```
+
+`Sex` gives the passenger's sex. In this `train` dataset, about two-thirds of passengers were male. 
+
+```{r}
+round(100 * prop.table(table(train$Sex)))
+```
+
+Here's a mosaic plot of the distribution of survival by sex for the passengers in `train`:
+
+```{r fig.width = 4, fig.height = 4}
+train2 <- mutate(train,
+                 Sex = factor(Sex, levels = c("female", "male"),
+                              labels = c("Female", "Male")),
+                 Survived = factor(Survived, levels = c(0, 1),
+                                   labels = c("Died", "Survived")))
+mosaicplot(~ Sex + Survived, data = train2, color = TRUE,
+           main = "")
+```
+
+Just for fun, here are the honorifics by sex. It looks like there was [a female doctor](http://www.encyclopedia-titanica.org/titanic-survivor/alice-leader.html) on board:
+
+```{r}
+table(train$honorific, train$Sex)
+train[train$honorific == "Dr" & train$Sex == "female", ]
+```
+
+`Age` is the passenger's age. For about 20% of passengers, this is missing. It looks like a higher percentage of passengers that had age data available survived compared to passengers missing age. 
+
+```{r fig.width = 4, fig.height = 4}
+prop.table(table(is.na(train$Age)))
+train2 <- mutate(train, 
+                 Survived = factor(Survived, levels = c(0, 1),
+                                   labels = c("Died", "Survived")),
+                 missing = factor(is.na(Age), levels = c(TRUE, FALSE),
+                                  labels = c("Age missing", "Age available")))
+mosaicplot(~ missing + Survived, data = train2, color = TRUE,
+           main = "")
+```
+
+For passengers with age data available, there was a large range of ages. 
+
+```{r}
+range(train$Age, na.rm = TRUE)
+```
+
+For children below 1, it looks like age was given in months (which was then converted to a fraction). 
+
+```{r}
+filter(train, Age < 1) %>%
+        select(Age, Name, Survived, Pclass) %>%
+        arrange(Age) %>%
+        mutate(months = round(Age * 12))
+```
+
+For passengers above 1, for the most part, it looks like Age was always given as a whole number, with half years (.5) occasionally included. 
+
+```{r}
+sample(unique(train$Age), 20)
+```
+
+There was a pretty big break in passenger ages between adults (around 18, say) and children. While there were some young children, teenagers seemed pretty rare. There were particularly few children in the 1st class. Children were more generally more likely to survive, especially if they were in the 1st or second class.  
+
+```{r warning = FALSE, fig.width = 4, fig.height = 4}
+train2 <- mutate(train,
+                 Survived = factor(Survived, levels = c(0, 1),
+                                   labels = c("Died", "Survived")),
+                 Pclass = factor(Pclass, levels = c(1, 2, 3),
+                                 labels = c("1st", "2nd", "3rd")))
+ggplot(train2, aes(x = Age, fill = Pclass)) + 
+        geom_histogram(color = "white", position = "stack") + 
+        ylab("# of passengers") + 
+        theme_few() + 
+        facet_wrap(~ Survived, ncol = 1) + 
+        theme(legend.title = element_blank(),
+              legend.position = "top")
+```
+
+Among adults, it looks like almost everyone over 65 died (although there weren't too many people that old). If you [check into this](http://www.encyclopedia-titanica.org/titanic-survivor/algernon-barkworth.html), however, it seems to be an error. It looks like this guy was 80 when he died, but that wasn't until 1945. He was actually 45 when he was on the Titanic. 
+
+```{r}
+filter(train, Age >= 65) %>%
+        select(Age, Survived, Pclass, Name) %>%
+        arrange(Age)
+```
+
+For children, it looks like several often shared the same last name (and so might have been siblings):
+
+```{r}
+head(filter(train, Age < 16) %>% 
+        select(Age, Name, Survived) %>%
+        arrange(Name), 20)
+```
+
+For children under 16, it looks like siblings were definitely not independent in terms of their survival. First, siblings were pretty likely to all share the same survival status. Second, families with lots of children were likely to not have any survivors. None of the children in last name groups of four or more children, for example, survived (at least based on this measure of siblings).
+
+```{r fig.width = 3, fig.height = 2.5}
+train$last_name <- gsub(",.*", "", train$Name)
+sample(train$last_name, 20)
+
+children <- filter(train, Age < 16) %>%
+        select(last_name, Name, Survived, Pclass, SibSp) %>%
+        group_by(last_name) %>%
+        summarize(n = n(), 
+                  SibSp = SibSp[1],
+                  Survived = sum(Survived),
+                  pSurvived = round(Survived / n, 2),
+                  Pclass = Pclass[1]) %>%
+        arrange(desc(n), desc(Survived))
+
+filter(children, n > 1)
+```
+
+Finally, this way of measuring numbers of siblings is pretty well correlated (for children < 16, at least), with the next feature, `SibSp`, which gives the number of siblings and / or spouse aboard. Reassuringly, the metric based on last names always gives an equal or lower number of siblings (some of the siblings will be in the testing data).
+
+```{r fig.height = 3, fig.width = 3}
+ggplot(children, aes(x = n, y = SibSp)) + 
+        geom_point(alpha = .25) + 
+        theme_few()
+```
+
+```{r fig.width = 3, fig.height = 3}
+children2 <- filter(train, Age < 16) %>%
+        group_by(SibSp) %>%
+        summarize(n = n(), 
+                  Survived = sum(Survived), 
+                  pSurvived = round(100 * (Survived / n), 2))
+ggplot(children2, aes(x = SibSp, y = pSurvived)) + 
+        geom_bar(stat = "identity") + 
+        ylim(c(0, 100)) + 
+        xlab("# of siblings") + 
+        ylab("% survived") + 
+        theme_few()
+
+```
+
+This pattern differs between children and adults.
+
+```{r fig.width = 3, fig.height = 4}
+children2 <- mutate(train,
+                    child = factor(Age < 16, levels = c(TRUE, FALSE), 
+                                   labels = c("Child", "Adult"))) %>%
+        filter(!is.na(Age)) %>%
+        group_by(SibSp, child) %>%
+        summarize(siblings = SibSp[1], 
+                  n = n(), 
+                  Survived = sum(Survived),
+                  pSurvived = 100 * Survived / n)
+ggplot(children2, aes(x = SibSp, y = pSurvived)) + 
+        facet_wrap(~ child, ncol = 1) + 
+        geom_bar(stat = "identity") + 
+        ylim(c(0, 100)) + 
+        xlab("# of siblings / spouse") + 
+        ylab("% survived") + 
+        theme_few()
+```
+
+`Parch` gives the number of parents or children that the person has on board. Most people have no parents or children. One person has six (presumably children).
+
+```{r}
+table(train$Parch)
+train[train$Parch >= 5, c("Name", "Pclass", "Parch", "Survived")]
+```
+
+Evidently, if a child had `Parch == 0`, it meant they were traveling with a nanny or governess. None of these children traveled in first class. (I might be pushing a bit here including children as old as 15 in this subset.) 
+
+```{r}
+(with_nanny <- filter(train, Age < 16 & Parch == 0) %>%
+  select(Survived, Pclass, Name, Age))
+```
+
+All children had a `Pchar` value of 2 or lower (i.e., no more than two parents, which makes sense). There were few children with `Pchar` of 0; the survival probability was highest for these children in the training data. Survival probability was lowest for chilrden with two parents onboard. Most adults traveled without any parents or children (`Pchar = 0`). Survival rates were lowest in this group.
+
+```{r fig.width = 6, fig.height = 4}
+child <- mutate(train,
+                child = factor(Age < 16,
+                               levels = c(TRUE, FALSE),
+                               labels = c("Children", "Adults"))) %>%
+  filter(!is.na(Age)) %>%
+  group_by(child, Parch) %>%
+  summarize(Died = n() - sum(Survived),
+            Survived = sum(Survived)) %>%
+  gather(outcome, number, -child, -Parch)
+
+ggplot(child, aes(x = Parch, y = number, fill = outcome)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(~ child, ncol = 1, scale = "free_y") + 
+  xlab("# of parents / children") + 
+  ylab("# of passengers") + 
+  theme_few()
+```
+
+`Ticket` gives the 
+
+```{r}
+train$Ticket <- as.character(train$Ticket) # Doesn't need to be a factor
+head(train$Ticket, 20)
+```
+
+These vary a lot, but sometimes you'll have several people with the same `Ticket`. Often, it looks like these were all members of the same family.
+
+```{r}
+table(train$Ticket)[table(train$Ticket) > 5]
+common_tickets <- names(table(train$Ticket)[table(train$Ticket) > 5])
+filter(train, Ticket %in% common_tickets) %>%
+  select(Name, Ticket, Survived) %>%
+  arrange(Ticket)
+```
+
+Based on this, it looks like survival rates tended to be pretty low for large families (same last name and all on the same ticket). It's possible to set family (last name and ticket number) as an additional feature.
+
+```{r}
+family <- mutate(train,
+                 last_name = gsub(",.*", "", Name),
+                 family = paste(last_name, Ticket, sep = "-")) %>%
+  select(Survived, family, Pclass) %>%
+  arrange(family)
+
+head(rev(sort(table(family$family))), 10)
+
+family_num <- group_by(family, family) %>%
+  summarize(n = n(),
+            Survived = sum(Survived),
+            Pclass = Pclass[1]) %>%
+  arrange(desc(n))
+head(family_num, 15)
+```
+

@@ -1,0 +1,362 @@
+---
+title: "Naive Bayes model"
+author: "Brooke Anderson"
+date: "January 20, 2016"
+output: html_document
+---
+
+```{r echo = FALSE, message = FALSE}
+library(knitr)
+opts_knit$set(fig.path = '../figures/naive_bayes-')
+```
+
+Load required libraries.
+
+```{r message = FALSE}
+library(dplyr) ## Data wrangling
+library(e1071) ## Includes `naiveBayes` function
+library(ggplot2) 
+library(stringr) ## Helps with regular expression
+```
+
+Read in the data. (I have it in the subdirectory `data` of the parent directory- `..`-- of my current working directory.) Sometimes, some of the machine learning functions can be particularly fussy about class type for variables, so I used `mutate` to specify those for any problem ones. It doesn't hurt to make sure the all the factor variables end up with the same levels and saved order of levels after reading in the data. 
+
+```{r}
+train <- read.csv("../data/train.csv") %>%
+  mutate(Survived = factor(Survived),
+         Pclass = factor(Pclass),
+         Name = as.character(Name),
+         Sex = factor(Sex))
+test <- read.csv("../data/test.csv") %>%
+  mutate(Pclass = factor(Pclass),
+         Name = as.character(Name),
+         Sex = factor(Sex))
+
+# Look through columns besides code about survival.
+for(column in c("Pclass", "Sex",
+               "Ticket", "Cabin", "Embarked")){
+  cat(column, " train levels: ", head(levels(train[ , column]), 5), "\n")
+  cat(column, " test levels: ", head(levels(test[ , column]), 5), "\n")
+               }
+```
+
+Everything looks fine for `Pclass`, `Sex`, and `Embarked`, but it looks like there will not always be values of all levels of `Ticket` and `Cabin` in both datasets, so we may need to think carefully about thow we use these variables. 
+
+## Null model
+
+As a baseline, you could fit a null model that just takes the most common value of `Survival` and predicts that everyone will have that. Since more people died than survived in the training set-- $P(Y) = `r round(mean(train$Survived == "1"), 2)`$ in the training data, where $Y$ is a 0 / 1 indicator of survival--here you would predict that everyone died. 
+
+This model will predict that `Survived` is always 0:
+
+```{r}
+pred_train <- rep(0, length = nrow(train))
+pred_test <- rep(0, length = nrow(test))
+```
+
+The accuracy of the `train` dataset is the percent of times, in this case, that `Survived` actually was 0:
+
+```{r}
+mean(train$Survived == "0")
+```
+
+To figure out the accuracy of the predictions from the null model for the `test` data, you need to save a csv with the predictions and submit to Kaggle:
+
+```{r}
+out <- cbind(test$PassengerId, 0)
+colnames(out) <- c("PassengerId", "Survived")
+write.csv(out, file = "../predictions/null_model.csv", row.names = FALSE)
+```
+
+Now there is a `null_model.csv` file in my `predictions` directory. After submitting to Kaggle, I found the accuracy of this model based on the Public Leaderboard observations was 0.62679.
+
+## Single categorical predictor
+
+First, try with a single, categorical predictor, `Pclass`.
+
+```{r}
+# Fit the model-- note same conventions as `glm` formula call
+nb_mod <- naiveBayes(Survived ~ Pclass, data = train)
+```
+
+Check out the model. It gives you the distribution of the outcome variable (`apriori`; $P(Y)$) and also the probability of each value of `Pclass` conditional on the level of `Survival`: $Pr(X_1 | Y)$ where $X_1$ is the passenger's ticket class and $Y$ is the passenger's survival status.
+
+```{r}
+nb_mod$apriori ## Class distribution for `Survived`
+nb_mod$tables ## Conditional probabilities given of `Pclass` given `Survived`
+```
+
+Note that each row of the `tables` element sums to 1:
+
+```{r}
+apply(nb_mod$tables$Pclass, 1, sum)
+```
+
+Predict and assess accuracy within training class:
+
+```{r}
+pred_train <- predict(nb_mod, train)
+mean(pred_train == "1") ## For a T / F, gives the proportion T's
+```
+
+(If you're having some problems getting `predict` to work with `naiveBayes`, see [here](http://stackoverflow.com/questions/19961441/naivebayes-in-r-cannot-predict-factor0-levels).)
+
+This model predicts that everyone in First class survives and no one in Second or Third:
+
+```{r}
+table(pred_train, train$Survived, train$Pclass)
+```
+
+To determine the accuracy, calculate the percent of time that the predicted value equals the true value for `Survived`:
+
+```{r}
+sum(pred_train == train$Survived) / length(pred_train)
+```
+
+You can also predict for the `test` data to generate a prediction to submit to Kaggle. 
+
+```{r}
+pred_test <- predict(nb_mod, test)
+head(pred_test)
+table(pred_test)
+```
+
+To submit, you need to join with the passenger IDs from `test` and write to a csv. I'm saving in a subdirectory of my parent directory called `predictions`. Also, need to convert the factor of `pred_test` results to character then numeric to have it saved properly as 0 / 1.
+
+```{r}
+out <- cbind(test$PassengerId, as.numeric(as.character(pred_test)))
+colnames(out) <- c("PassengerId", "Survived")
+head(out, 3)
+write.csv(out, file = "../predictions/nb_pclass.csv", row.names = FALSE)
+```
+
+This file is now ready to upload to Kaggle. I did, and the accuracy was 0.65550, not too much lower than the testing set accuracy of `r sum(pred_train == train$Survived) / length(pred_train)` for this model. 
+
+Note: to find the help file for predicting with `naiveBayes`, use:
+
+```{r eval = FALSE}
+?predict.naiveBayes
+```
+
+## Single continuous predictor
+
+You can also try Naive Bayes with a continuous varible, like `Age`. 
+
+```{r}
+nb_mod <- naiveBayes(Survived ~ Age, data = train)
+```
+
+Now, the "Conditional probabilities" part of the model output gives, for each class of `Survived`, the mean (first column) and standard deviations (second column) of the independent variable put into the model (`Age`). 
+
+```{r}
+nb_mod
+```
+
+To visualize, here are density plots for `Age` separated by `Survived`, with red lines showing the mean values given by `nb_mod`: 
+
+```{r warning = FALSE, fig.width = 3.5, fig.height = 3}
+vlines <- data.frame(Age = nb_mod$table$Age[ , 1],
+                     Survived = factor(rownames(nb_mod$table$Age)))
+
+ggplot(train, aes(Age)) + 
+  geom_density() + 
+  facet_wrap(~ Survived, ncol = 1) + 
+  geom_vline(data = vlines, aes(xintercept = Age), color = "red") + 
+  theme_minimal()
+```
+
+Here's a comparison of the model output with the means of age calculated by survival, and you can see they're identical.
+
+```{r}
+nb_mod$table$Age
+by(train$Age, train$Survived, mean, na.rm = TRUE)
+```
+
+Again, you can predict with this model. However, now you have the problem that `Age` is missing for some of your observations. We can talk about strategies for dealing with that-- I'm going to use a very simple approach and replace any of those with the most common value of `Survival` in the dataset, "0".
+
+```{r}
+pred_train <- predict(nb_mod, train)
+pred_train[is.na(pred_train)] <- factor(0)
+table(pred_train)
+```
+
+The accuracy in the training data is: 
+
+```{r}
+mean(train$Survived == pred_train)
+```
+
+Only one person is predicted to survive under this model. This happens to be the youngest person on board the ship among the training dataset.
+
+```{r}
+train[pred_train == "1", ]
+min(train$Age, na.rm = TRUE)
+```
+
+Fit the predictive model to the testing dataset and then try it on Kaggle:
+
+```{r}
+pred_test <- predict(nb_mod, test)
+pred_test[is.na(pred_test)] <- factor(0)
+table(pred_test)
+
+out <- cbind(test$PassengerId, as.numeric(as.character(pred_test)))
+colnames(out) <- c("PassengerId", "Survived")
+head(out, 3)
+write.csv(out, file = "../predictions/nb_age.csv", row.names = FALSE)
+```
+
+The accuracy of this model on the Leaderboard was 0.617284, which is worse than that of the null model.
+
+## Multiple predictors
+
+You can also fit this with multiple predictors. For example, maybe fit a model with `Pclass`, `Sex`, and `Embarked`. Just to keep in mind, although the Naive Bayes model assumes they're all independent of each other, here that's not the case. For example, a much higher percentage of 1st and 2nd class were female then 3rd class:
+
+```{r fig.width = 4, fig.height = 3.5}
+mosaicplot(~ Pclass + Sex, data = train, color = TRUE,
+           main = "")
+```
+
+Something to think about: what are the implications of using Naive Bayes when you violate these assumptions of independence between predictors?
+
+Next, fit the model:
+
+```{r}
+(nb_mod <- naiveBayes(Survived ~ Pclass + Sex + Embarked, data = train))
+```
+
+Now you get separate conditional probabilities for each predictor. Evidently, some values of `Embarked` aren't listed as `NA`s but rather as `""`. They get their own probabilities in `nb_mod`. 
+
+```{r}
+sum(is.na(train$Embarked))
+sum(train$Embarked == "")
+train[train$Embarked == "", ]
+```
+
+I think that how we treat these shouldn't affect the Kaggle score, because none of the test observations have `Embarked` equal to `""`.
+
+Predicting this to the training data. Again, if something is missing, I'll replace with "0" (better solutions?):
+
+```{r}
+pred_train <- predict(nb_mod, train)
+pred_train[is.na(pred_train)] <- factor(0)
+table(pred_train)
+mean(train$Survived == pred_train)
+```
+
+On the training data, this model has an accuracy of `r mean(train$Survived == pred_train)`, the highest so far by a bit. 
+
+To see how it does on the testing data: 
+
+```{r}
+pred_test <- predict(nb_mod, test)
+pred_test[is.na(pred_test)] <- factor(0)
+table(pred_test)
+
+out <- cbind(test$PassengerId, as.numeric(as.character(pred_test)))
+colnames(out) <- c("PassengerId", "Survived")
+head(out, 3)
+write.csv(out, file = "../predictions/nb_class_sex_embark.csv",
+          row.names = FALSE)
+```
+
+This model had an accuracy of 0.73684 on the Kaggle Leaderboard data, the best so far. Also, this model had the biggest reduction in accuracy going from the training to the testing data. 
+
+## Kitchen sink model
+
+Last, I tried chucking in everything I could think of, incuding some "engineered" features. First, some code to add some features: 
+
+```{r}
+# Add honorific (Mr., Mrs., Dr., etc.)
+honorific <- str_extract(train$Name, ",\\ .+?\\.") # Uses `stringr` package
+honorific <- gsub("[\\,\\.\\ ]", "", honorific)
+head(honorific, 3)
+train <- cbind(train, honorific)
+
+# Add if age is missing. Note-- this might cover some data leakage--
+# possible that it was easier to find out ages of survivors than victims
+train <- mutate(train, 
+                 missing = factor(is.na(Age), levels = c(TRUE, FALSE),
+                                  labels = c("Age missing",
+                                             "Age available")))
+
+# Mark if they were using a ticket that covered more than 5 people
+common_tickets <- names(table(train$Ticket)[table(train$Ticket) > 5])
+head(common_tickets)
+train$common_ticket <- factor("0", levels = c("0", "1"))
+train$common_ticket[train$Ticket %in% common_tickets] <- "1"
+table(train$common_ticket)
+```
+
+Here are all the variables currently in `train`: 
+
+```{r}
+str(train)
+```
+
+So I'll fit the model:
+
+```{r}
+kitchen_sink <- naiveBayes(Survived ~ Pclass + Sex + SibSp + 
+                             Parch + Fare + Embarked + honorific + 
+                             missing , data = train)
+kitchen_sink
+```
+
+Predict on training data:
+
+```{r}
+pred_train <- predict(kitchen_sink, train)
+pred_train[is.na(pred_train)] <- factor(0)
+table(pred_train)
+mean(train$Survived == pred_train)
+```
+
+This accuracy is even better than for the last model, at least for the training dataset.
+
+To try on the `test` data, I need to add the same new features to that, as well (I'll now use `test` and `train` to figure out the common tickets, though): 
+
+```{r}
+# Add honorific (Mr., Mrs., Dr., etc.)
+honorific <- str_extract(test$Name, ",\\ .+?\\.") # Uses `stringr` package
+honorific <- gsub("[\\,\\.\\ ]", "", honorific)
+head(honorific, 3)
+test <- cbind(test, honorific)
+
+# Add if age is missing. Note-- this might cover some data leakage--
+# possible that it was easier to find out ages of survivors than victims
+test <- mutate(test, 
+                 missing = factor(is.na(Age), levels = c(TRUE, FALSE),
+                                  labels = c("Age missing",
+                                             "Age available")))
+
+# Mark if they were using a ticket that covered more than 5 people
+all_tickets <- c(as.character(train$Ticket), as.character(test$Ticket))
+common_tickets <- names(table(all_tickets)[table(all_tickets) > 5])
+head(common_tickets)
+test$common_ticket <- factor("0", levels = c("0", "1"))
+test$common_ticket[test$Ticket %in% common_tickets] <- "1"
+table(test$common_ticket)
+```
+
+```{r}
+pred_test <- predict(kitchen_sink, test)
+pred_test[is.na(pred_test)] <- factor(0)
+table(pred_test)
+
+out <- cbind(test$PassengerId, as.numeric(as.character(pred_test)))
+colnames(out) <- c("PassengerId", "Survived")
+head(out, 3)
+write.csv(out, file = "../predictions/nb_kitchen_sink.csv",
+          row.names = FALSE)
+```
+
+This model had an accuracy of 0.67464 on the Leaderboard test data, so it was not an improvement over the Naive Bayes with just three predictors.
+
+## Things to think more about
+
+- Laplace smoothing
+- Better to pool predictors with lots of categories into just a few categories?
+- Predicting observations with 1+ feature values missing
+- Way to automate finding the best predictors to include? Overfitting repercussions of trying to automate that?
+- Can violate the assumption of independence between predictors but still be a good model?
+- How does Naive Bayes work if you have a continuous predictor that is not normally distributed? Something really skewed like `Fare` here. Can you set up a Naive Bayes model to use a different distribution for continuous predictors?
