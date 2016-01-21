@@ -2,7 +2,7 @@
 title: "Results to date"
 author: "Brooke Anderson"
 date: "January 20, 2016"
-output: html_document
+output: pdf_document
 ---
 
 Model     | Training accuracy | Testing Accuracy
@@ -18,3 +18,9 @@ Age, k = 1 | 0.67677 | 0.57416
 Fare, k = 1 | 0.80696 | 0.64115
 Age, Fare, SibSp, k = 5 | 0.76431 | 0.61244
 Sex, Pclass, k = 5 | 0.77441 | 0.76555
+Sex, Pclass, Age, k = 1 | 0.8642 | 
+Sex, Pclass, Age, k = 5 | 0.81818 | 
+Sex, Pclass, Age, k = 9 | 0.80808 | 
+Sex, Pclass, Age, k = 13 | 0.80359 | 
+Sex, Pclass, Age, k = 17 | 0.79798 | 
+Sex, Pclass, Age, k = 21 | 0.78788 | 0.73206

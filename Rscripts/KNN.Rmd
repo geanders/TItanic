@@ -231,4 +231,13 @@ When I ran this through Kaggle, the accuracy was 0.76555, which was my best scor
 
 ## Role of `k` choice
 
-Next, I tried 
+Next, I tried fitting a knn of `Sex`, `Pclass`, and `Age` using `k` values of 1, 5, 9, 13, 17, and 21:
+
+```{r}
+for(k in seq(1, 21, by = 4)){
+  out <- my_knn(k = k, predictors = c("Sex", "Pclass", "Age"))
+  cat("k =", k, out, "\n")
+}
+```
+
+I haven't checked all of these in Kaggle yet, because I reached my submission limit for the day.
