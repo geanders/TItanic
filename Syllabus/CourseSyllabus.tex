@@ -1,0 +1,247 @@
+\documentclass[11pt,oneside]{amsart}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{url}
+\parindent=0pt
+\pagestyle{empty}
+
+\newcommand{\header}[1]{\bigbreak\textbf{#1}}
+
+\begin{document}
+
+\begin{center}
+  \bf
+  \includegraphics[width=3in]{logo} \\
+  Syllabus \\
+  STAT 695 \\ 
+ Competitve Predictive Modeling  \\
+  Spring, 2016 \\
+  (2 credits)                 
+\end{center}
+
+\header{Description}
+
+Statistical machine learning has became the central tool for a large number of research and practical fields, such as business decision making, imaging processing, and detecting disease relevant factor, and particularly predictive modeling. A vast amount of statistical tools and models have been discussed in literature for predictive modeling from both theoretical and methodological perspectives. In this course, instead of focusing on the theoretical aspects, students will gain extensive practice in building and testing predictive models through directed participation in predictive modeling competitions, including Kaggle (\url{https://www.kaggle.com/}) and the Data Mining Cup (\url{http://www.data-mining-cup.de/en/}). Competitions will include predicting responses of mixed types. Practical utilization of statistical learning tools will be discussed along with the competition. In addition, students will gain extensive practice in using R
+software for data wrangling and modeling. 
+
+
+\header{Prerequisites}
+
+Experience coding in R; at least one regression course such as STAT 511; permission of the instructors.
+
+
+\header{Instructors}
+
+Professor Brooke Anderson, \url{brooke.anderson@colostate.edu}
+
+Office: 146 Environmental Health Building
+
+Office hours: By appointment \medskip
+
+Professor Wen Zhou, \url{riczw@colostate.edu}, \\
+\url{http://www.stat.colostate.edu/~riczw/}
+
+Office: 208 Statistics Building
+
+Office hours: By appointment
+
+
+
+\header{Meetings}
+
+Tuesdays 4:00-4:45; Thursdays 3:50-4:05; Location: Stats 006
+
+
+
+\header{Textbooks}
+
+Required: 
+\begin{itemize}
+\item Max Kuhn and Kjell Johnson, \emph{Applied Predictive
+  Modeling}, Springer (2013). (Available online through CSU library)
+ 
+ \item Gareth James, Daniela Witten, Trevor Hastie, Robert
+Tibshirani, \emph{An Introduction to Statistical Learning: With
+  Applications in R}, Springer (2013). \url{http://www-bcf.usc.edu/~gareth/ISL/ISLR%20First%20Printing.pdf}
+\end{itemize}
+
+Recommended: 
+\begin{itemize}
+\item Alan J. Izenman, {\it Modern Multivariate Statistical Techniques: Regression, Classification, and Manifold Learning}, Springer (2008).
+ 
+ \item Trevor Hastie, Robert Tibshirani, and Jerome Friedman, {\it The Elements of Statistical Learning: Data Mining, Inference, and Prediction, Second Edition}, Springer (2009) (The book is free online).
+
+\item Christopher M. Bishop, {\it Pattern Recognition and Machine Learning}, (2006).
+\item Ian Witten, Eibe Frank, and Mark Hall, {\it Data Mining: Practical Machine Learning Tools and Techniques, Third Edition}, (2011).
+\end{itemize}
+
+
+
+
+
+\header{Course Objectives}
+
+The primary aim of this course is to use three in-depth, practical
+examples of predictive-modeling challenges (two Kaggle competitions
+and the Data Mining Cup) to allow students to gain extensive practical
+experience in data processing, data matrix construction, variable selection, model fitting, model ensemble, and evaluating predictive
+models. With that aim, this course will introduce students to a
+variety of topics in machine learning to provide them with strategies
+and approaches to tackle these specific applied examples. Some of the
+challenges that will come up will be specific to these three problems,
+but this experience of completing three predictive modeling
+competitions will provide students with the conceptual understanding, programming tools, and
+strategies to tackle their own predictive modeling challenges. This
+course would also provide an excellent background for students aiming
+to take more theoretical courses on statistical learning in the
+future. 
+\vspace{.2cm}
+
+Specific objectives include: 
+
+\begin{enumerate}
+\item Students will work in multi-disciplinary teams to compete in the two Kaggle predictive modeling competitions.
+\item Students will learn how to fit and evaluate a variety of
+  predictive models, including: classification and regression trees,
+  support vector machines, logistic and linear regression models,
+  tree ensemble models, Naive Bayes, k-nearest neighbors, and neural networks.
+\item Students will learn strategies in data wrangling and feature engineering to improve
+  predictive models.
+\item Students will learn to use resampling methods to assess the
+  performance of predictive models.
+\item Students will gain extensive additional experience working on
+  complex modeling problems using R statistical software. 
+  \item Students will be recommend to form a team to participate the annual Data Mining Cup held from April to May. The final result will be released on July 2016, and the top 10 teams will be invited to Berlin, Germany, for the final ceremony; more details see \url{http://www.data-mining-cup.de/en/}, \url{http://magazine.amstat.org/blog/2013/10/01/iowa-state-dmc/}.
+\end{enumerate}
+
+
+\header{Course Topics}
+
+\begin{itemize}
+\item Definition of machine learning.
+\item Classification models: K-nearest neighbors, naive Bayes,
+  logistic regression, classification trees, bagging, random forests,
+  boosting, support vector machines.
+\item Regression models: K-nearest neighbors, naive Bayes, linear
+  regression, regression trees and tree ensembles, non-linear
+  regression, support vector machines, ridge regression, lasso.
+\item Model fitting and tuning.
+\item Model evaluation, including with re-sampling techniques.
+\item Data pre-processing, feature selection, measuring variable
+  importance, and visualizing data.
+\item Linear model selection and regularization and the challenges of
+  high-dimensional data.
+\item Neural networks and deep learning.
+\item Unsupervised learning.
+\end{itemize}
+
+
+\header{Course Expectations \& Grading}
+
+Grades will be based on attendance, participation, regular submission
+of model results to each of the two Kaggle competitions, written reports on
+each challenge (one per group), in-class presentations on final
+models for each Kaggle challenge and the DMC, and student presentations on topics from
+Kuhn and Johnson (2013).
+
+\header{Assignments \& Readings}
+
+\begin{itemize}
+\item \textbf{Week 1:} What is machine learning? Classification models: K-nearest neighbors
+  and naive Bayes.\\
+\emph{Reading:} James et al.: Chs. 2, 4.1-2, 4.4. Kuhn and Johnson
+Chs. 1, 2, 13.5-6.\\
+\emph{Competition:} Kaggle: Surviving the Titanic
+
+\item \textbf{Week 2:} Metrics of performance of classification
+  models. Classification models: logistic regression models and
+  classification trees.\\
+\emph{Reading:} James et al.: Chs. 2.2, 4.3, 4.5, and 8.1. Kuhn and
+Johnson: Chs. 11, 12.1-3, 14.1-2.\\
+\emph{Tuesday assignment:} Fit some different Naive Bayes and k-Nearest Neighbors models. For a few of your models, try measuring some other metrics of performance, like sensitivity, specificity, AUC, Youden's J Index, positive predictive value, etc.\\ 
+\emph{Thursday assignment:} Try fitting the following types of models: LDA (see week 1 reading), logistic regression, classification tree. Can you get any of your models to beat the Sex-only benchmark model? Can you get any to beat the to-date class best (Casey's 0.8)?\\
+\emph{Competition:} Kaggle: Surviving the Titanic
+
+\item \textbf{Week 3:} Using resampling to measure performance of
+  classification models. Classification models: ensemble models
+  (bagging, random forest, boosting).\\
+\emph{Reading:} James et al.: Chs. 5, 8.2. Kuhn and Johnson: Ch. 14.3-7.\\
+\emph{Competition:} Kaggle: Surviving the Titanic
+
+\item \textbf{Week 4:} Classification models: support vector
+  machines.\\
+\emph{Reading:} James et al.: Ch. 9\\
+\emph{Competition:} Kaggle: Surviving the Titanic\\
+\textbf{Graded products:} Students present final predictive model for Titanic
+competition.
+
+\item \textbf{Week 5:} Student presentations based on Kuhn and Johnson
+  2013: Data pre-processing; Over-fitting and model tuning; Remedies
+  for severe class imbalance; Feature selection\\
+\emph{Reading:} Kuhn and Johnson: Chs. 3, 4, 16, 19\\
+\textbf{Graded products:} Students presentations on material from chapters in Kuhn and
+Johnson 2013.\\
+
+\item \textbf{Week 6:} Assessing performance of regression
+  models. Regression models: Linear regression models. Over-fitting
+  and model tuning re-visited.\\
+\emph{Reading:} James et al.: Ch. 3. Kuhn and Johnson: Chs. 4
+(re-visited), 5, 6.1-2.\\
+\emph{Competition:} Kaggle: Current competition with continuous
+outcome
+
+\item \textbf{Week 7:} Linear model selection and
+  regularization. Shrinkage methods and dimension reduction methods.\\
+\emph{Reading:} James et al.: Ch. 6.\\
+\emph{Competition:} Kaggle: Current competition with continuous
+outcome
+
+\item \textbf{Week 8:} Regression models: Non-linear regression
+  models, regression trees. Measuring predictor importance.\\
+\emph{Reading:} James et al.: Ch. 7. Kuhn and Johnson: Chs. 7 and 8.\\
+\emph{Competition:} Kaggle: Current competition with continuous
+outcome
+
+\item \textbf{Week 9:} Regression models: Regression trees. Feature selection /
+  engineering re-visisted.\\
+\emph{Reading:} James et al.: Ch. 8 (re-visited). Kuhn and Johnson:
+Chs. 3 and 19 (re-visited).\\
+\emph{Competition:} Kaggle: Current competition with continuous
+outcome
+
+\item \textbf{Week 10:} Student team presentations on final model for current Kaggle
+  competition.\\
+\emph{Reading:} Background information on this year's Data Mining Cup\\
+\emph{Competition:} Kaggle: Current competition with continuous
+outcome\\
+\textbf{Graded products:} Students present final predictive model for
+current Kaggle competition.\\
+
+\item \textbf{Week 11:} Factors that can affect model performance. Case study: Grant application models. \\
+\emph{Reading:} Kuhn and Johnson: Chs. 15, 20. \\
+\emph{Competition:} This year's Data Mining Cup competition.
+
+\item \textbf{Week 12:} High-dimensional data (re-visited). Case study: Concrete Mixture Strength models.\\
+\emph{Reading:} James et al. : Ch. 6 (re-visited). Kuhn and Johnson: Ch. 10.\\
+\emph{Competition:} This year's Data Mining Cup competition.
+
+\item \textbf{Week 13:} Neural networks. Deep learning methods. \\
+\emph{Reading:} Kuhn and Johnson: Ch. 13.2. \\
+\emph{Competition:} This year's Data Mining Cup competition.
+
+\item \textbf{Week 14:} Visualization. Unsupervised learning.\\
+\emph{Reading:} James et al.: Ch 10. \\
+\emph{Competition:} This year's Data Mining Cup competition.
+
+\item \textbf{Week 15:} Student team presentations on final model for
+  this year's DMC  competition.\\
+\emph{Competition:} This year's Data Mining Cup competition.\\
+\textbf{Graded products:} Students present final predictive model for
+DMC.
+
+\end{itemize}
+
+
+
+\end{document}
