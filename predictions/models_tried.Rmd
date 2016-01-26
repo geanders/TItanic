@@ -7,7 +7,7 @@ output: pdf_document
 
 Model     | Training accuracy | Testing Accuracy
 ----------|-------------------|-----------------
-**Null model** | 0.6161616 | 0.62679
+**Class probabilities model** | 0.6161616 | 0.62679
 **Naive Bayes** |   |    
 Passenger class | 0.67901 | 0.65550
 Age | 0.617284 | 0.62201
