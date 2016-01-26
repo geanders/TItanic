@@ -17,8 +17,11 @@ Load required libraries.
 ```{r message = FALSE}
 library(dplyr)  ## Data wrangling
 library(klaR) ## Includes `NaiveBayes` function
+library(e1071)
 library(caret)
 library(pROC)
+library(class) ## Includes `knn` function
+library(microbenchmark)  ## For measuring computing performance
 ```
 
 Bring in the data:
@@ -89,6 +92,24 @@ colnames(out) <- c("PassengerId","Survived")
 write.csv(out, file = "predictions/nb_sex.csv", row.names = FALSE)
 ```
 
+### A few notes on the `klaR` package
+
+As a note, this particular function for Naive Bayes lets you do a few interesting things. First, it lets you generate a plot or plots to see the conditional probablities for any continuous predictors: 
+
+```{r, fig.width = 4, fig.height = 3}
+nb_fare <- NaiveBayes(Survived ~ Fare, data = train)
+plot(nb_fare, legendplot = FALSE)
+```
+
+It also lets you use a kernel density estimate rather than estimating a normal density if you specify `usekernel = TRUE`:
+
+```{r, fig.width = 4, fig.height = 3}
+nb_fare <- NaiveBayes(Survived ~ Fare, data = train, usekernel = TRUE)
+plot(nb_fare, legendplot = FALSE)
+```
+
+This function also allows the user to specify their own prior probabilities.
+
 ## Evaluation metrics
 
 ### Accuracy 
@@ -125,35 +146,151 @@ A confusion matrix:
 nb_eval$table
 ```
 
-Overall accuracy:
+Note: The `confusionMatrix` help file has formulas for many of these metrics, if you want to get those equations. I think that, to make those equations work correctly in comparison to the table printed out with the confusion matrix output, you need to think of this output as being in the order: 
+
+   --  |    -- 
+------ | ----------
+D      |    C
+B      |    A
+
+In terms of true and false positives and negatives, if you take `Survived = 1` as a positive value (or event, using the wording from the help file), this confusion matrix is in the format: 
+
+   --          |    -- 
+-------------- | ----------
+True negative (TN) | False negatives (FN)
+False positive (FP) | True positives (TP)
+
+**Overall accuracy**:
 
 ```{r}
 nb_eval$overall["Accuracy"]
 ```
 
-Sensitivity and specificity: 
+Linking this measure with the values in the confusion matrix:
+
+$$
+\mbox{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}
+$$
+
+This model correctly classified the survival status of `r round(100 * nb_eval$overall["Accuracy"])`% of all passengers (when applied to the training dataset).
+
+The **error rate** is 1 - Accuracy.
+
+**Sensitivity and specificity**: 
+
+Here is the model's **sensitivity** on the training data:
 
 ```{r}
 nb_eval$byClass["Sensitivity"]
+```
+
+This metric is calculated: 
+
+$$
+\mbox{Sensitivity} = \frac{TP}{TP + FN}
+$$
+
+Therefore, for those passengers that survived, this model correctly predicted the status of `r round(100 * nb_eval$byClass["Sensitivity"])`% of them.
+
+This measure is also sometimes called **recall**, **true positive rate**, or **power** (see Table 4.7 in James et al.). The **Type II error rate** is 1 - Sensitivity.
+
+Here is the model's **specificity** on the training data:
+
+```{r}
 nb_eval$byClass["Specificity"]
 ```
 
+This metric is calculated: 
+
+$$
+\mbox{Specificity} = \frac{TN}{TN + FP}
+$$
+
+Therefore, for those passengers that died, this model correctly predicted the status of `r round(100 * nb_eval$byClass["Specificity"])`% of them.
+
+The **false positive rate** and **Type 1 error rate** are both 1 - Specificity.
+
+Based on Sensitivity and Specificity, you can calculate **Youden's J Index**:
+
+$$
+\mbox(J) = \mbox{Sensitivity} + \mbox{Specificity} - 1
+$$
+
+Here, **Youden's J Index** is `r nb_eval$byClass["Sensitivity"] + nb_eval$byClass["Specificity"] - 1`. This provides a single measure of the model's performance on both sensitivity and specificity.
+
 ### Positive and negative predictive values
 
-The output of the `confusionMatrix` function also provides positive predictive value (PPV) and negative predictive value (NPV):
+The output of the `confusionMatrix` function also provides positive predictive value (PPV) and negative predictive value (NPV).
+
+Here is the model's **positive predictive value** within the training data:
 
 ```{r}
 nb_eval$byClass["Pos Pred Value"]
+```
+
+Therefore, of passengers who were predicted by the model to surive, `r round(100 * nb_eval$byClass["Pos Pred Value"])`% actually did survive.
+
+This metric is calculated: 
+
+$$
+\mbox{PPV} = \frac{\mbox{Sensitivity} * \mbox{Prevalence}}{\mbox{Sensitivity} * \mbox{Prevalence} + ((1 - \mbox{Sensitivity}) * (1 - \mbox{Prevalence}))}
+$$
+
+**If** the proportions of the two outcome classes are balanced, then this simplifies to:
+
+$$
+\mbox{PPV} = \frac{TP}{TP + FP}
+$$
+
+This value is also know as the **precision**. The **false discovery proportion** is 1 - PPV. 
+
+Here is the model's **negative predictive value** within the training data:
+
+```{r}
 nb_eval$byClass["Neg Pred Value"]
 ```
 
+Therefore, of passengers who were predicted by the model to die, `r round(100 * nb_eval$byClass["Neg Pred Value"])`% actually did die.
+
+This metric is calculated: 
+
+$$
+\mbox{PPV} = \frac{\mbox{Sensitivity} * (1 - \mbox{Prevalence})}{\mbox{Sensitivity} * (1 - \mbox{Prevalence}) + ((1 - \mbox{Sensitivity}) * \mbox{Prevalence})}
+$$
+
+**If** the proportions of the two outcome classes are balanced, then this simplifies to:
+
+$$
+\mbox{PPV} = \frac{TN}{TN + FN}
+$$
+
 ### Kappa
 
-The output of the `confusionMatrix` function also provides a Kappa value:
+The output of the `confusionMatrix` function also provides a Kappa value, which it gives as an unweighted Kappa statistic (see the `confusionMatrix` help file):
 
 ```{r}
 nb_eval$overall["Kappa"]
 ```
+
+The **Kappa* statistic can take values between -1 (completely inaccurate predictions) and 1 (completely accurate predictions). Kappa will equal zero when the model accuracy is equal to the accuracy you would expect if you predicted all observations to have the more common of the two outcome classes (here, that would mean predicting that everyone dies). Any value of Kappa below 0, then, means that your model is essentially worse than just guessing.
+
+This metric is calculated as: 
+
+$$
+\mbox{Kappa} = \frac{O - E}{1 - E}
+$$
+
+Where $O$ is the model's observed accuracy (the accuracy calculated based on comparing predictions from the model to true values) and $E$ is the expected accuracy. I had thought that expected accuracy was the **no-information rate**, or accuracy you would get if you predicted that all observations had the most common outcome class. You can get this from the object created by `confusionMatrix`:
+
+```{r}
+nb_eval$overall["AccuracyNull"]
+```
+
+However, when I plugged this in, I got a different Kappa than that generated by `confusionMatrix`. From the Kuhn and Johnson book: 
+
+> "$E$ is the expected accuracy based on the marginal totals of the confusion matrix."
+
+Perhaps we can clarify this in class.
 
 ## ROC Curve
 
@@ -178,8 +315,106 @@ This can be used to calculate the Area Under the Curve (AUC):
 auc(roc_nb_sex)
 ```
 
+I can also try this out for a k-NN model. Just for fun, this time I'll try fitting with the `knn3` function from the `caret` package. This allows you to fit a k-nearest neighbors using the classic formula syntax, although it still seems to have some problems with how to handle missing values when it comes time to predict:
 
-### To think about
+```{r fig.width = 3, fig.height = 3, message = FALSE, results = "hide"}
+train$scaled_Age <- scale(train$Age)
+
+set.seed(1206)
+knn_mod <- knn3(Survived ~ Sex + Pclass + scaled_Age, data = train,
+                k = 21)
+
+i_train <- complete.cases(train[ , c("Sex", "Pclass", "scaled_Age")])
+
+train_pred <- predict(knn_mod, newdata = train[i_train, ],
+                type = "class")
+x_accuracy <- data.frame(Survived = train$Survived,
+                           pred = factor("0", levels = c("0", "1")))
+x_accuracy$pred[i_train] <- train_pred
+
+roc_knn <- roc(response = as.numeric(as.character(x_accuracy$Survived)),
+               predictor = as.numeric(as.character(x_accuracy$pred)))
+plot(roc_knn)
+```
+
+```{r}
+auc(roc_knn)
+```
+
+## Splitting the training data to test
+
+You might notice that, for all these metrics, I could only get measures of them when applying the model to the training data that was used to fit the model. Kaggle lets me test its metric (accuracy) through the Leaderboard, but otherwise I can't test metrics on new data (i.e., that I didn't use to train the model) using the methods I've been using.
+
+We'll talk a lot more about this later, but a simple approach is to take the training data I've got and randomly split it into a set of data to use to train the model and a set to use to test the model. An easy way to do that is to sample row numbers from the full dataset and then use those to create `my_train` and `my_test` subsets using indexing. For example, to split into two thirds data to use for training and one third to use for testing:
+
+```{r}
+my_split <- sample(1:nrow(train), size = round(1 / 3 * nrow(train)))
+
+my_train <- train[-my_split, ]
+my_test <- train[my_split, ]
+
+dim(my_train)
+dim(my_test)
+```
+
+Now I can train and test on my local dataset, and maybe come up with a better idea of which models will perform well on the Kaggle leaderboard before I submit answers to that. 
+
+For example:
+
+```{r}
+nb_sex <- NaiveBayes(Survived ~ Sex, data = my_train)
+
+pred_mytrain <- predict(nb_sex, newdata = my_train)
+mean(pred_mytrain$class == my_train$Survived)
+confusionMatrix(pred_mytrain$class,
+                my_train$Survived,
+                positive = "1")
+
+pred_mytest <- predict(nb_sex, newdata = my_test)
+mean(pred_mytest$class == my_test$Survived)
+confusionMatrix(pred_mytest$class,
+                my_test$Survived,
+                positive = "1")
+```
+
+
+## Computing time
+
+Sometimes one of your most important considerations might be how long it takes either to fit or predict from the model. The `microbenchmark` package can help you determine if something is taking a very long time. It runs each line of code 100 times and gives, under `mean`, the number of nanoseconds it took to run that line of code.
+
+Here are the required times for fitting Naive Bayes and k-NN models: 
+
+```{r warning = FALSE, message = FALSE, cache = TRUE}
+i_train <- complete.cases(train[ , c("Sex", "Pclass", "Age")])
+train_bench <- train[i_train, c("Survived", "Sex", "Pclass", "Age")]
+train_bench$Age <- scale(train_bench$Age)
+knn_x <- scale(model.matrix(~ Sex + Pclass + Age, data = train_bench)[ , -1])
+knn_y <- train_bench$Survived
+
+microbenchmark(
+  nb_mod <- NaiveBayes(Survived ~ Sex + Pclass + Age,
+                       data = train_bench),
+  nb_mod_2 <- naiveBayes(Survived ~ Sex + Pclass + Age,
+                       data = train_bench),
+  knn_mod <- knn3(Survived ~ Sex + Pclass + Age,
+                  data = train_bench, k = 21)
+)
+```
+
+And here are the times for predicting from the models (notice that the k-nearest neighbors fit using the `knn` function from the `class` package fits and predicts from the model at the same time): 
+
+```{r warning = FALSE, message = FALSE, cache = TRUE}
+microbenchmark(
+  nb_preds <- predict(nb_mod, newdata = train_bench),
+  nb_pred_2 <- predict(nb_mod_2, newdata = train_bench),
+  knn_preds <- predict(knn_mod, newdata = train_bench, type = "class"),
+  knn_preds_2 <- knn(knn_x, knn_x, knn_y)
+)
+```
+
+For more on profiling R code, see [the chapter about it](http://adv-r.had.co.nz/Profiling.html) on the online version of Hadley Wickham's *Advanced R* book.
+
+## To think about
 
 In the `confusionMatrix` output, what are: 
 

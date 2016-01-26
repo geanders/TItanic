@@ -1,0 +1,11 @@
+base
+dplyr
+MASS
+klaR
+e1071
+lattice
+ggplot2
+caret
+pROC
+class
+microbenchmark
