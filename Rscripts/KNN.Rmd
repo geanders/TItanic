@@ -135,7 +135,7 @@ my_knn <- function(k, predictors, out_file = NULL){
   
   # Fit knn for the testing data and write out file to submit to Kaggle
   set.seed(1201)
-  test_pred <- knn(train_x, test_x, train_y, k = 1) 
+  test_pred <- knn(train_x, test_x, train_y, k = k) 
   test_accuracy <- data.frame(PassengerId = test$PassengerId,
                               Survived = factor("0", levels = c("0", "1")))
   test_accuracy$Survived[complete.cases(test[ , predictors])] <-
