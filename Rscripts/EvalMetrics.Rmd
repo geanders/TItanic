@@ -1,0 +1,15 @@
+---
+title: "Evaluation Metrics for Classification Models"
+author: "Brooke Anderson"
+date: "January 26, 2016"
+output: pdf_document
+---
+
+```{r echo = FALSE, message = FALSE}
+knitr::opts_knit$set(fig.path = '../figures/EvalMetrics-')
+```
+
+For this, I'll do different evaluation metrics for two Naive Bayes models:
+
+1. Naive Bayes with only sex as a predictor
+2. Naive Bayes with sex and ticket class as predictors
