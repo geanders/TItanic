@@ -17,6 +17,7 @@ Load required libraries.
 ```{r message = FALSE}
 library(dplyr)  ## Data wrangling
 library(klaR) ## Includes `NaiveBayes` function
+library(caret)
 ```
 
 Bring in the data:
@@ -26,13 +27,11 @@ train <- read.csv("data/train.csv") %>%
   mutate(Survived = factor(Survived),
          Pclass = factor(Pclass),
          Name = as.character(Name),
-         Sex = factor(Sex),
-         child = as.factor(as.character(Age < 6)))
+         Sex = factor(Sex))
 test <- read.csv("data/test.csv") %>%
   mutate(Pclass = factor(Pclass),
          Name = as.character(Name),
-         Sex = factor(Sex),
-         child = as.factor(as.character(Age < 6)))
+         Sex = factor(Sex))
 ```
 
 For this, I'll do different evaluation metrics for a Naive Bayes with only sex as a predictor. I think that the first of these might be the benchmark models for Kaggle, with the "predict survival if woman, death otherwise" model that some folks in class put in.
@@ -55,21 +54,21 @@ nb_sex$tables
 Evidently, you can use `predict` with this function, including with an optional argument specifying `newdata`. To predict with the training data: 
 
 ```{r}
-pred_train_sex <- predict(nb_sex, newdata = train)
+pred_train <- predict(nb_sex, newdata = train)
 ```
 
 This prediction includes two elements: the class predictions (0 = died; 1 = survived) and the posterior class probabilities: 
 
 ```{r}
-names(pred_train_sex)
-head(pred_train_sex$class)
-head(pred_train_sex$posterior)
+names(pred_train)
+head(pred_train$class)
+head(pred_train$posterior)
 ```
 
 I checked to see if this always predicts that women survive and men die: 
 
 ```{r}
-table(train$Sex, pred_train_sex$class)
+table(train$Sex, pred_train$class)
 ```
 
 Yep. So, this should give the results from the benchmark "Sex" model in the Kaggle competition. 
@@ -77,15 +76,92 @@ Yep. So, this should give the results from the benchmark "Sex" model in the Kagg
 To create predictions to submit to Kaggle: 
 
 ```{r}
-pred_test_sex <- predict(nb_sex, newdata = test)
+pred_test <- predict(nb_sex, newdata = test)
 ```
 
 And write them out to a comma-separated file. Note that the `pred_test$class` is saved as a factor variable, so if you don't convert to a character and then a number using the `as.*` functions, you might get outputs of 1s and 2s instead of 0s and 1s, which would cause problems when you submit to Kaggle.
 
 ```{r}
 out <- cbind(test$PassengerId,
-             as.numeric(as.character(pred_test_sex$class)))
+             as.numeric(as.character(pred_test$class)))
 colnames(out) <- c("PassengerId","Survived")
 write.csv(out, file = "predictions/nb_sex.csv", row.names = FALSE)
 ```
+
+## Evaluation metrics
+
+### Accuracy 
+
+Kaggle is judging this competition on accuracy, so that's the main metrics we've been using. In the training dataset, the accuracy of this model is: 
+
+```{r}
+mean(train$Survived == pred_train$class)
+```
+
+To get the accuracy on the test data set, I have to submit the file I wrote out, "nb_sex.csv", to Kaggle. I did, and the accuracy based on the test data for the Public Leaderboard was 0.76555. This is indeed the score for the Gender-Based Model benchmark and ties my best score to date. 
+
+### Sensitivity / specificity
+
+The `caret` package is a bit of a Swiss Army knife for machine learning. You can use it, among other things, to check sensitivity and specificity, and a variety of other model evaluation metrics using its `confusionMatrix` function: 
+
+```{r}
+nb_eval <- confusionMatrix(data = pred_train$class,
+                           reference = train$Survived,
+                           positive = "1")
+```
+
+This function outputs an object that includes:
+
+A confusion matrix: 
+
+```{r}
+nb_eval$table
+```
+
+Overall accuracy:
+
+```{r}
+nb_eval$overall["Accuracy"]
+```
+
+Sensitivity and specificity: 
+
+```{r}
+nb_eval$byClass["Sensitivity"]
+nb_eval$byClass["Specificity"]
+```
+
+### Positive and negative predictive values
+
+The output of the `confusionMatrix` function also provides positive predictive value (PPV) and negative predictive value (NPV):
+
+```{r}
+nb_eval$byClass["Pos Pred Value"]
+nb_eval$byClass["Neg Pred Value"]
+```
+
+### Kappa
+
+The output of the `confusionMatrix` function also provides a Kappa value:
+
+```{r}
+nb_eval$overall["Kappa"]
+```
+
+### To think about
+
+In the `confusionMatrix` output, what are: 
+
+- The No Informaiton Rate
+- Prevalence
+- Detection Rate
+- Detection Prevalence
+- Balanced Accuracy
+
+Other things to think about: 
+
+- What are some different evaluation metrics used by other Kaggle classification competitions?
+- Think of some examples of predictive tasks where Accuracy would be a poor metric to use to evaluate models.
+- How do these metrics work when you are classifying into > 2 classes?
+
 

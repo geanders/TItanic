@@ -11,6 +11,7 @@ Model     | Training accuracy | Testing Accuracy
 **Naive Bayes** |   |    
 Passenger class | 0.67901 | 0.65550
 Age | 0.617284 | 0.62201
+Sex | 0.7867565 | 0.76555
 Class, Sex, Embarked | 0.77778 | 0.73684
 Kitchen Sink | 0.80247 | 0.67464
 **k-Nearest Neighbors** | | 
@@ -18,9 +19,10 @@ Age, k = 1 | 0.67677 | 0.57416
 Fare, k = 1 | 0.80696 | 0.64115
 Age, Fare, SibSp, k = 5 | 0.76431 | 0.61244
 Sex, Pclass, k = 5 | 0.77441 | 0.76555
-Sex, Pclass, Age, k = 1 | 0.8642 | 
-Sex, Pclass, Age, k = 5 | 0.81818 | 
-Sex, Pclass, Age, k = 9 | 0.80808 | 
-Sex, Pclass, Age, k = 13 | 0.80359 | 
-Sex, Pclass, Age, k = 17 | 0.79798 | 
-Sex, Pclass, Age, k = 21 | 0.78788 | 0.73206
+Sex, Pclass, Age, k = 1 | 0.8642 | 0.73206
+Sex, Pclass, Age, k = 5 | 0.81818 | 0.73206
+Sex, Pclass, Age, k = 9 | 0.80808 | 0.74641
+Sex, Pclass, Age, k = 13 | 0.80359 | 0.74163
+Sex, Pclass, Age, k = 17 | 0.79798 | 0.75120
+Sex, Pclass, Age, k = 21 | 0.78788 | 0.77033
+Sex, Pclass, Age, k = 25 | 0.77890| 0.76555
