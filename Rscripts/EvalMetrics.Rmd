@@ -18,6 +18,7 @@ Load required libraries.
 library(dplyr)  ## Data wrangling
 library(klaR) ## Includes `NaiveBayes` function
 library(caret)
+library(pROC)
 ```
 
 Bring in the data:
@@ -102,7 +103,13 @@ To get the accuracy on the test data set, I have to submit the file I wrote out,
 
 ### Sensitivity / specificity
 
-The `caret` package is a bit of a Swiss Army knife for machine learning. You can use it, among other things, to check sensitivity and specificity, and a variety of other model evaluation metrics using its `confusionMatrix` function: 
+You can get a confusion matrix to use to calculate many of these metrics pretty simply by taking a table of the model predictions versus the observed labels:
+
+```{r}
+table(pred_train$class, train$Survived)
+```
+
+You can also use functions from R packages to calculate everything. The `caret` package is a bit of a Swiss Army knife for machine learning. You can use it, among other things, to check sensitivity and specificity, and a variety of other model evaluation metrics using its `confusionMatrix` function: 
 
 ```{r}
 nb_eval <- confusionMatrix(data = pred_train$class,
@@ -148,11 +155,35 @@ The output of the `confusionMatrix` function also provides a Kappa value:
 nb_eval$overall["Kappa"]
 ```
 
+## ROC Curve
+
+You can use the `roc` function in the `pROC` package to create Receiver Operating Characteristic (ROC) curves: 
+
+```{r}
+roc_nb_sex <- roc(response = as.numeric(as.character(train$Survived)),
+                  predictor = as.numeric(as.character(pred_train$class)))
+```
+
+This can be plotted: 
+
+```{r fig.width = 3, fig.height = 3, message = FALSE, results = "hide"}
+plot(roc_nb_sex)
+```
+
+(As a reminder, to get the help file for something like this that is a method for a class, use, e.g., `?plot.roc`.)
+
+This can be used to calculate the Area Under the Curve (AUC):
+
+```{r}
+auc(roc_nb_sex)
+```
+
+
 ### To think about
 
 In the `confusionMatrix` output, what are: 
 
-- The No Informaiton Rate
+- The No Information Rate
 - Prevalence
 - Detection Rate
 - Detection Prevalence
