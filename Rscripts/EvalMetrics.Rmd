@@ -272,7 +272,7 @@ The output of the `confusionMatrix` function also provides a Kappa value, which 
 nb_eval$overall["Kappa"]
 ```
 
-The **Kappa* statistic can take values between -1 (completely inaccurate predictions) and 1 (completely accurate predictions). Kappa will equal zero when the model accuracy is equal to the accuracy you would expect if you predicted all observations to have the more common of the two outcome classes (here, that would mean predicting that everyone dies). Any value of Kappa below 0, then, means that your model is essentially worse than just guessing.
+The **Kappa** statistic can take values between -1 (completely inaccurate predictions) and 1 (completely accurate predictions). Kappa will equal zero when the model accuracy is equal to the accuracy you would expect if you predicted all observations to have the more common of the two outcome classes (here, that would mean predicting that everyone dies). Any value of Kappa below 0, then, means that your model is essentially worse than just guessing.
 
 This metric is calculated as: 
 

@@ -1,0 +1,344 @@
+---
+title: "Deeper into k-nearest neighbors"
+author: "Brooke Anderson"
+date: "January 26, 2016"
+output: pdf_document
+---
+
+```{r message = FALSE}
+knitr::opts_knit$set(fig.path = '../figures/MoreKNN-',
+                     root.dir = '..')
+library(dplyr)
+library(ggplot2)
+library(flexclust)  ## To calculate distance matrix
+library(StatMatch)
+```
+
+## My lurking questions
+
+Some lurking questions about k-nearest neighbors: 
+
+- I've seen stuff on how to resolve ties in the majority vote once you've identified the k nearest points, but how do you resolve ties in the distance to points to pick just k?
+- How does scaling binary predictive variables influence their weight in the distance measurement? Do you identify different nearest neighbors if you do or don't scale binary variables? If you don't scale, do these variables carry a heavier or lighter weight when picking nearest neighbors than scaled continuous variables?
+- What are the implications for how you dealed with ordered multi-level classes like the ticket class of the passengers? What happens when you include that as an ordinal number? If you do, should you scale it? What happens when you include it broken down as different binary indicators (i.e., 0 / 1 for second and third class, in the case of `Pclass`).
+- How do measure distance to determine nearest neighbors when values of some parameters are missing?
+
+## Training and testing data
+
+For this, I'll read in the training dataset and split it into one-half `my_train`, to train the model (maybe I should say "train" for k-NN), and one-half `my_test` to test the model. I'll set a seed so you should get the same results. I'll also limit it to the predictive variables of Sex, Pclass, Age, and Fare. For now, I'll remove all missing values and only sample 10 values.  
+
+```{r}
+train <- read.csv("data/train.csv") %>%
+  select(Survived, Sex, Pclass, Age, Fare)
+
+train <- filter(train, complete.cases(train)) %>%
+  mutate(nSex = as.numeric(Sex),
+         sAge = as.vector(scale(Age)),
+         sFare = as.vector(scale(Fare)),
+         sSex = as.vector(scale(nSex)))
+bPclass <- model.matrix(~ factor(Pclass),
+                        data = train)[ , -1]
+train[ , c("bPclass2", "bPclass3")] <- bPclass
+
+test <- read.csv("data/test.csv") %>%
+  select(Sex, Pclass, Age, Fare) 
+
+test <- filter(test, complete.cases(test)) %>%
+  mutate(nSex = as.numeric(Sex),
+         sAge = as.vector(scale(Age)),
+         sFare = as.vector(scale(Fare)),
+         sSex = as.vector(scale(nSex)))
+bPclass <- model.matrix(~ factor(Pclass),
+                        data = test)[ , -1]
+test[ , c("bPclass2", "bPclass3")] <- bPclass
+
+set.seed(2101)
+train_2 <- sample_n(train, 10)
+
+set.seed(21)
+train_i <- sample(1:nrow(train_2),
+                  size = round(1 / 2 * nrow(train_2)))
+(my_train <- train_2[train_i, ])
+(my_test <- train_2[-train_i, ])
+```
+
+## "From scratch" k-NN code
+
+To start checking this out, I'll write some of my own code to fit a k-NN model from scratch. This will use the theoretical ideas for a most-basic k-NN model. In some cases, different R packages likely implement the model fit using different algorithms. I'll try to check that out later, but I think this is a good way to try to get a handle on the basics of some of these questions (and maybe appreciate all the fancy things being done by R package code a bit more).
+
+First, I'll calculate distance as Euclidean distance. Euclidean distance between two vectors $p$ and $q$ is: 
+
+$$
+d(\mathbf{p}, \mathbf{q}) = \left(\sum_{i = 1}^{n}(p_i - q_i)\right)^{1/2}
+$$
+
+in R, you can calculate a distance matrix using `dist2` from the `flexclust` package:
+
+```{r}
+find_dist_mat <- function(train, test, predictors){
+  dist_mat <- dist2(train[ , predictors],
+                    test[ , predictors])
+  #dist_mat <- gower.dist(train[ , predictors],
+  #                       test[ , predictors])
+  dist_mat <- t(dist_mat)
+  return(dist_mat)
+}
+
+find_dist_mat(my_train, my_test, c("Age", "Fare"))
+```
+
+The default distance metric for `dist2` is Euclidean, but you can also specify alternative distance matrics ("maximum", "manhattan", "canberra", "binary" or "minkowski"). In terms of computational speed (from the help file): 
+
+> "The current implementation is efficient only if y has not too many rows (the code is vectorized in x [first matrix] but not in y [second matrix])."
+
+Now I need to identify the indices of the `k` lowest values in each row of this matrix. I'll do a function that can do that for a row, and then apply it across all rows:
+
+```{r}
+find_k_indices <- function(x, k){
+  order_indices <- order(x)
+  nearest_ind <- order_indices[1:k]
+  return(nearest_ind)
+}
+
+dist_mat <- find_dist_mat(my_train, my_test,
+                          c("Age", "Fare"))
+find_k_indices(dist_mat[1, ], k = 3)
+```
+
+In terms of handling ties in the `sort`, here's a note from the `order` help file: 
+
+> "Any unresolved ties will be left in their original ordering."
+
+Each row represents a point in `my_test`, and each column gives the Euclidean distance between that point and a point in `my_train`.
+
+```{r}
+find_nn_indices <- function(train,
+                            test,
+                            predictors,
+                            k){
+  
+  dist_mat <- find_dist_mat(train, test, predictors)
+  
+  index_mat <- apply(dist_mat, 1, find_k_indices, k)
+  if(!is.matrix(index_mat)){
+    index_mat <- as.matrix(index_mat, nrow = 1)
+  } else {
+    index_mat <- t(index_mat)
+  }
+  return(index_mat)
+  }
+```
+
+```{r}
+find_nn_indices(train = my_train, test = my_test,
+               predictors = c("Age", "Fare"),
+               k = 1)
+find_nn_indices(train = my_train, test = my_test,
+               predictors = c("Age", "Fare"),
+               k = 3)
+```
+
+Now I can use this matrix of k-nearest indices to pick out the nearest neighbor votes from the training data:
+
+```{r}
+nn_votes <- function(nn_indices, train_y){
+  votes <- apply(nn_indices, 1, function(x) train_y[x])
+  if(!is.matrix(votes)){
+    votes <- as.matrix(votes, nrow = 1)
+  } else {
+    votes <- t(votes)
+  }
+  return(votes)
+}
+
+nn_indices <- find_nn_indices(my_train, my_test,
+                          predictors = c("Age", "Fare"),
+                          k = 3)
+nn_indices
+my_train$Survived
+nn_votes(nn_indices, train_y = my_train$Survived)
+
+nn_indices <- find_nn_indices(my_train, my_test,
+                          predictors = c("Age", "Fare"),
+                          k = 1)
+nn_indices
+my_train$Survived
+nn_votes(nn_indices, train_y = my_train$Survived)
+```
+
+Then I can generate the predictions (1 if the average of votes is above 0.5, 0 otherwise -- as long as I only use odd `k` values, this average will never be exactly 0.5).
+
+```{r}
+my_prediction <- function(votes){
+  mean_vote <- apply(votes, 1, mean)
+  prediction <- factor(mean_vote < 0.5,
+                       levels = c(TRUE, FALSE),
+                       labels = c("0", "1"))
+  return(prediction)
+}
+
+nn_indices <- find_nn_indices(my_train, my_test,
+                          predictors = c("Age", "Fare"),
+                          k = 3)
+votes <- nn_votes(nn_indices,
+                  train_y = my_train$Survived)
+votes
+my_prediction(votes)
+```
+
+Putting everything into a function:
+
+```{r}
+my_knn_function <- function(train, test, 
+                            predictors,
+                            outcome,
+                            k){
+  nn_indices <-find_nn_indices(train,
+                               test,
+                               predictors,
+                               k)
+  votes <- nn_votes(nn_indices,
+                    train_y = train[ , outcome])
+  out <- my_prediction(votes)
+  return(out)
+}
+
+my_knn_function(train = my_train, test = my_test,
+                predictors = c("Age", "Fare"),
+                outcome = "Survived", k = 3)
+```
+
+## Role of scaling predictors
+
+### Scaling continuous predictors
+
+Now I can use these functions to check out the influence of some different choices. For example, we know that it's important to scale continuous variables, so we'll ultimately want to do that, but I can check out how important that is. I'll create two new variables with scaled age and fare, `sAge` and `sFare`, to use to check.
+
+First, I calculated the distance matrix using the scaled and unscaled predictors: 
+
+```{r}
+find_dist_mat(my_train, my_test,c("Age", "Fare"))
+find_dist_mat(my_train, my_test,c("sAge", "sFare"))
+```
+
+Then I checked the selection of nearest neighbors, using `k = 3`: 
+
+```{r}
+find_nn_indices(train = my_train, test = my_test,
+                predictors =c("Age", "Fare"), k = 3)
+find_nn_indices(train = my_train, test = my_test,
+                predictors =c("sAge", "sFare"), k = 3)
+```
+
+While some of the nearest neighbors identified are the same, occasionally some differ. For example, the unscaled analysis identifies the fourth entry in the training data set as a nearest neighbor to the fourth test point, while the scaled analysis suggests the second member of the dataset is closer instead. Here are those passengers:
+
+First, the passenger we need to predict: 
+```{r}
+my_test[4, ]
+```
+
+Here's the training passenger identified as a near neighbor by the analysis with unscaled predictors but not the analysis with scaled predictors:
+
+```{r}
+my_train[4, ]
+```
+
+Here's the training passenger identified as a near neighbor by the analysis with scaled predictors but not the analysis with unscaled predictors:
+
+```{r}
+my_train[2, ]
+```
+
+`Fare` is more similar between the test data point and the training point identified using unscaled predictors; `Age` is more similar with the training point identified using scaled predictors. This makes sense, because the unscaled scale of `Fare` is much larger than that of `Age` and so would cause `Fare` to carry more weight in measuring Euclidean distance if you don't scale these continuous predictors.
+
+### Scaling a categorical predictor
+
+Here's a similar analysis of what happens when you just convert a binary categorical predictor to a numeric value versus when you scale it after you convert. Here `nSex` is a version of the `Sex` variable where the factor levels have been converted to numbers (1 = female, 2 = male), while `sSex` is a version of the same variable, but scaled. 
+
+Here are the distance metrics, done for using each of these predictors in conjunction with the `sFare` predictor: 
+
+```{r}
+find_dist_mat(my_train, my_test,c("nSex", "sFare"))
+find_dist_mat(my_train, my_test,c("sSex", "sFare"))
+```
+
+And here are the indices of the nearest neighbors identified based on these predictors, with `k = 3`: 
+
+```{r}
+(a <- find_nn_indices(train = my_train, test = my_test,
+                predictors =c("nSex", "sFare"), k = 3))
+(b <- find_nn_indices(train = my_train, test = my_test,
+                predictors =c("sSex", "sFare"), k = 3))
+```
+
+For this small dataset, these two methods gave the exact same sets of nearest neighbors: 
+
+```{r}
+sum(apply(a != b, 1, sum) > 0) ## Number of testing
+                               ## points with different
+                               ## nearest neighbors
+                               ## (order counts)
+```
+
+I decided to check and see if it made any difference on the full training and testing datasets. Even in the full dataset, this choice of whether to scale the categorical predictor of `Sex` made absolutely no difference in which training-set points were predicted as the nearest neighbors of each testing point. 
+
+```{r}
+a <- find_nn_indices(train = train,
+                     test = test,
+                predictors =c("nSex", "sFare"), k = 3)
+b <- find_nn_indices(train = train,
+                     test = test,
+                predictors =c("sSex", "sFare"), k = 3)
+sum(apply(a != b, 1, sum) > 0)
+```
+
+### Choosing how to handle an ordinal predictor
+
+One of the predictors, `Pclass`, is ordinal. How are k-NN predictions affected by your choice of the following two ways to deal with this predictor:
+
+- Convert to a numerical value (`Pclass` in the data). This will give it values that increase by one unit for each change from one category to the next-higher category of the predictor.
+- Convert to binary variables (`bPclass2` and `bPclass3` in the data). This essentially loses the information inherent in the predictor about order but removes the assumption that the difference between each set of contiguous categories is the same.
+
+Here are the distance metrics, done for using each of these predictors in conjunction with the `sAge` predictor: 
+
+```{r}
+find_dist_mat(my_train, my_test,c("Pclass", "sAge"))
+find_dist_mat(my_train, my_test,c("bPclass2",
+                                  "bPclass3", "sAge"))
+```
+
+And here are the indices of the nearest neighbors identified based on these predictors, with `k = 3`: 
+
+```{r}
+(a <- find_nn_indices(train = my_train, test = my_test,
+                predictors =c("Pclass", "sAge"), k = 3))
+(b <- find_nn_indices(train = my_train, test = my_test,
+                predictors =c("bPclass2", "bPclass3",
+                              "sAge"), k = 3))
+```
+
+In this case, there is a good bit of difference in who is identified as a nearest neighbor depending on the choice of method.
+
+For example, here is the second passenger that we need to predict for: 
+
+```{r}
+my_test[2, ]
+```
+
+When using the "ordinal" method, the following passenger from the training data are identified as a nearest neighbor: 
+
+```{r}
+my_train[c(3, 4), ]
+```
+
+while when using the "binary" method, the following training passengers were identified as a nearest neighbor instead: 
+
+```{r}
+my_train[c(2, 1), ]
+```
+
+For the binary method, `Age` is prioritized once you fail on an exact match for `Pclass`. For the ordinal method, a `Pclass` value that is only off by one class can still override age-related distance when finding a nearest neighbor. 
+
+It will be interesting to see how these two methods compare in terms of accuracy in the Titanic competition. The ordinal approach seems like it might be a winner-- it looks like it's picking out nearest neighbors that aren't too far away in age while helping to grab, for example, second-class passengers to match with a first class passenger.
+
+
