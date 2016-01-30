@@ -23,28 +23,26 @@ Classification tree | ...
 ---  | LR | LDA | NB | k-NN | tree 
 ------------- | ------------- | ---- | -------| ---------| ---
 **Positives** |  |  | | |
-Natural fit with categorical predictors | + | - | + | 0 | +
-Natural fit with continuous predictors | + | + | - | + | +
+Natural fit with categorical predictors | + | 0 | + | 0 | +
+Natural fit with continuous predictors | + | + | + | + | +
 Quick to train | + | +  | + | + | +
 Quick to predict | + | + | + | 0 | +
-Interpretable coefficients | + | + | - | 0 | 0
-Easy to explain results | + | - | + | 0 | + 
+Interpretable coefficients | + | + | 0 | 0 | +
+Easy to explain results | + | + | + | 0 | + 
 Top choice with linear decision boundary | + | + | - | 0 | 0
 Top choice with non-linear decision boundary | 0 | 0 | - | + | +
 Automatically learns interactions | 0 | 0 | 0 | 0 | +
-Easy to do >2 outcome classes | 0 | - | - | - | 0
-Works okay with missing values | - | - | - | 0 | +
+Easy to do >2 outcome classes | 0 | 0 | + | + | 0
+Works okay with missing values | 0 | 0 | 0 | 0 | +
 Good for determining class probabilities | + | + | +  | 0 | +
 Works okay with smaller training datasets | + | + | + | 0 | 0
-Works with more predictors than observations | 0 | 0  | - | + | - 
 Does okay handling irrelevant predictors | 0  | 0 | + | 0 | -
-Does okay handling lots of predictors | - | - | - | 0 | -
-Works okay with many-level categorical predictors | - | - | + | 0 | -
-Easy to update with new training data | 0 | - | + | + | 0
-Does okay if training data is not random sample | - | - | - | - | -
+Does okay handling lots of predictors | 0 | 0 | + | 0 | 0
+Easy to update with new training data | 0 | 0 | + | + | 0
+Does okay if training data is not random sample | 0 | 0 | 0 | + | 0
 **Negatives** |  |  | | |
-Assumes independence in predictors | 0 | 0 | + | - | - 
-Assumes distribution for continuous predictors | + | + | + | 0 | 0
+Assumes independence in predictors | NA | 0 | + | + | 0 
+Assumes distribution for continuous predictors | + | + | + | + | 0
 Requires lots of memory | 0 | 0 | 0 | + | 0
 
 > "A good first rule for choosing a method is choose one that you understand very well. ...  Put an SVM in Vladimir Vapnik's hands, a classification-regression tree in Jerome Friedman's hands or deep learning in Geoffrey Hinton's hands and they're all going to positively destroy the rest of you on Kaggle and have a hard time beating each other very consistently..." - Rick Barber, Quora post
