@@ -1,0 +1,199 @@
+---
+title: "Cross-Validation"
+author: "Brooke Anderson"
+date: "February 4, 2016"
+output: pdf_document
+---
+
+```{r message = FALSE, echo = FALSE}
+knitr::opts_knit$set(fig.path = '../figures/CrossValidation-',
+                     root.dir = '..')
+```
+
+```{r message = FALSE, warning = FALSE}
+library(dplyr) # Data wrangling
+library(tidyr) # Data wrangling
+library(caret) # Machine learning
+library(ggplot2) # Plotting
+```
+
+## Cross-validation methods
+
+Method | Bias | Variance | Speed
+-------|------|----------|--------
+Validation set | | | 
+10-fold CV | | | 
+5-fold CV | | | 
+Leave-one-out CV | | | 
+
+## Overview of example
+
+For the cross-validation, I'm going to check out two things about the k-nearest neighbors model using `Survived`, `Pclass`, and `Sex` as predictors. First, I'm going to see how accuracy compares with two choices: 
+
+1. Modeling `Pclass` as an ordered versus unordered categorical variable
+2. Selecting that all `test` data with missing age be predicted as `0` versus that they be predicted using random draws from a binomial distribution.
+
+Next, I'll use cross validation to tune the `k` parameter for the model. 
+
+I'll use cross-validation as a first step for both of these questions and then check the more promising models on Kaggle. 
+
+## Bring in data
+
+```{r}
+train <- read.csv("data/train.csv") %>%
+         select(Survived, Pclass, Sex, Age) %>%
+         mutate(Survived = factor(Survived),
+         Pclass = factor(Pclass),
+         Sex = factor(Sex),
+         Pclass_ordered = ordered(Pclass))
+test <- read.csv("data/test.csv") %>%
+        select(Pclass, Sex, Age) %>%
+        mutate(Pclass = factor(Pclass),
+        Sex = factor(Sex),
+        Pclass_ordered = ordered(Pclass))
+test_ids <- read.csv("data/test.csv") %>% 
+            select(PassengerId)
+```
+
+I tried out the `train` function from `caret` to do the cross-validation. I specified that the method should be `knn` and that models should be assessed using "Accuracy". I let this function do the preprocessing of centering and scaling.  
+
+First, I tried out the model including `Pclass` as an unordered versus ordered variable: 
+
+```{r}
+set.seed(16)
+knn_mod_1 <- train(Survived ~ Age + Sex + Pclass + Sex:Pclass,
+                   data = train, 
+                   method = "knn",
+                   metric = "Accuracy",
+                   preProc = c("center", "scale"),
+                   tuneLength = 20,
+                   trControl = trainControl(method = "cv", number = 10))
+knn_mod_1
+
+set.seed(16)
+knn_mod_2 <- train(Survived ~ Age + Sex + Pclass_ordered + Sex:Pclass_ordered,
+                   data = train, 
+                   method = "knn",
+                   metric = "Accuracy",
+                   preProc = c("center", "scale"),
+                   tuneLength = 20,
+                   trControl = trainControl(method = "cv", number = 10))
+knn_mod_2
+```
+
+Fitting `knn` this way seems to have no problems with categorical and ordered variables. Another thing to notice is that, now, I didn't have to get rid of the observations with missing values in the training dataset before I fit the model. It turns out that the pre-processing done by `train` defaults to remove missing values as part of pre-processing. 
+
+Note from the help file for `preProcess` in `caret`: 
+
+> "Pre-processing transformation (centering, scaling etc.) can be estimated from the training data and applied to any data set with the same variables."
+
+You can also use this pre-processing, if you want, to impute missing data by averaging across nearest neighbors for the missing values. Here's a note on that from the help file: 
+
+> "k-nearest neighbor imputation is carried out by finding the k closest samples (Euclidian distance) in the training set. Imputation via bagging fits a bagged tree model for each predictor (as a function of all the others). This method is simple, accurate and accepts missing values, but it has much higher computational cost. Imputation via medians takes the median of each predictor in the training set, and uses them to fill missing values. This method is simple, fast, and accepts missing values, but treats each predictor independently, and may be inaccurate."
+
+It turns out that `trainControl` has a lot of different options where you can specify which way to validate a model. These include: 
+
+- `cv`
+- `repeatedcv`
+- `boot`
+- `boot632`
+- `LOOCV`
+
+The `number` option, when used with `method = "cv"`, gives the number of folds to use (i.e., `number = 10` would do 10-fold cross validation).
+
+Here is a plot to compare the two methods (using `Pclass` as unordered versus ordered factor): 
+
+```{r fig.width = 6, fig.height = 3}
+to_plot <- data.frame(k = knn_mod_1$results$k,
+                      unordered = knn_mod_1$results$Accuracy,
+                      ordered = knn_mod_2$results$Accuracy) %>%
+  gather(Pclass, Accuracy, -k)
+ggplot(to_plot, aes(x = k, y = Accuracy, color = Pclass)) + 
+  geom_line() + theme_classic()
+```
+
+To get values to use for Kaggle, you can use the `predict` method for `train` objects: 
+
+```{r}
+test_preds_1 <- predict(knn_mod_1, newdata = test)
+head(test_preds_1)
+```
+
+Remember, since this is a method for an object (using R's object-oriented capabilities), you can get the helpfile for the method by adding `<function>.<object>`: 
+
+```{r, eval = FALSE}
+?predict.train
+```
+
+This method is still only giving predictions for observations in the testing data where you have non-missing values for all observations: 
+
+```{r}
+nrow(test)
+length(test_preds_1)
+sum(complete.cases(test))
+```
+
+I'll try to predict anywhere with missing observations by taking a random draw from a binomial, with probability of surviving based on the average in the training dataset:
+
+```{r}
+prob_surv <- mean(train$Survived == 1)
+test_preds_miss <- sample(c(0, 1), size = nrow(test),
+                       replace = TRUE, prob = c(1 - prob_surv, prob_surv))
+
+test_preds_1a <- test_preds_miss
+test_preds_1a[complete.cases(test)] <- as.numeric(test_preds_1) - 1
+out <- cbind(test_ids, Survived = test_preds_1a)
+write.csv(out, file = "predictions/knn_unorderedPclass.csv",
+          row.names = FALSE)
+
+test_preds_2 <- predict(knn_mod_2, newdata = test)
+test_preds_2a <- test_preds_miss
+test_preds_2a[complete.cases(test)] <- as.numeric(test_preds_2) - 1
+out <- cbind(test_ids, Survived = test_preds_2a)
+write.csv(out, file = "predictions/knn_orderedPclass.csv",
+          row.names = FALSE)
+```
+
+When I submitted to Kaggle, I got the following scores: 0.68421 for the one with ordered `Pclass` and 0.68421 for the one with unordered `Pclass`. 
+
+I tried this with a few different ways to predict for testing data points that were missing age. First, I predicted "0" for all new observations missing age: 
+
+```{r}
+test_preds_1a <- rep(0, nrow(test))
+test_preds_1a[complete.cases(test)] <- as.numeric(test_preds_1) - 1
+out <- cbind(test_ids, Survived = test_preds_1a)
+write.csv(out, file = "predictions/knn_unorderedPclass_all0.csv",
+          row.names = FALSE)
+
+test_preds_2a <- rep(0, nrow(test))
+test_preds_2a[complete.cases(test)] <- as.numeric(test_preds_2) - 1
+out <- cbind(test_ids, Survived = test_preds_2a)
+write.csv(out, file = "predictions/knn_orderedPclass_all0.csv",
+          row.names = FALSE)
+```
+
+Here, the Kaggle results were 0.74641 for the model with ordered `Pclass` and 0.74163 for the model with unordered `Pclass`.
+
+Then, I tried ... : 
+
+```{r}
+prob_surv <- mean(train$Survived == 1)
+test_surv <- round(nrow(test) * prob_surv)
+test_die <- round(nrow(test) * (1 - prob_surv))
+test_preds_miss <- sample(c(rep(0, test_die), rep(1, test_surv)))
+
+test_preds_1a <- test_preds_miss
+test_preds_1a[complete.cases(test)] <- as.numeric(test_preds_1) - 1
+out <- cbind(test_ids, Survived = test_preds_1a)
+write.csv(out, file = "predictions/knn_unorderedPclass_exact.csv",
+          row.names = FALSE)
+
+test_preds_2 <- predict(knn_mod_2, newdata = test)
+test_preds_2a <- test_preds_miss
+test_preds_2a[complete.cases(test)] <- as.numeric(test_preds_2) - 1
+out <- cbind(test_ids, Survived = test_preds_2a)
+write.csv(out, file = "predictions/knn_orderedPclass_exact.csv",
+          row.names = FALSE)
+```
+
+Here, the Kaggle results were 0.69378 for the model with ordered `Pclass` and 0.68421 for the model with unordered `Pclass`.

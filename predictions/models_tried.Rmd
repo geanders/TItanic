@@ -26,3 +26,14 @@ Sex, Pclass, Age, k = 13 | 0.80359 | 0.74163
 Sex, Pclass, Age, k = 17 | 0.79798 | 0.75120
 Sex, Pclass, Age, k = 21 | 0.78788 | 0.77033
 Sex, Pclass, Age, k = 25 | 0.77890| 0.76555
+**k-Nearest Neighbors**, binomial for missing test obs | | 
+Sex, Age, Pclass_ordered, Sex:Pclass_ordered | 0.8096244  | 0.68421
+Sex, Age, Pclass_unordered, Sex:Pclass_unordered | 0.8096244  | 0.68421
+**k-Nearest Neighbors**, 0s for missing test obs | | 
+Sex, Age, Pclass_ordered, Sex:Pclass_ordered | 0.8096244 | 0.74641
+Sex, Age, Pclass_unordered, Sex:Pclass_unordered | 0.8096244 | 0.74163
+**k-Nearest Neighbors**, scrambled 0 / 1s for missing test obs | | 
+Sex, Age, Pclass_ordered, Sex:Pclass_ordered | 0.8096244 | 0.69378
+Sex, Age, Pclass_unordered, Sex:Pclass_unordered | 0.8096244 | 0.68421
+**random forest** | |
+mtry picked with CV, Pclass, Sex, Age, Fare, Embarked | .8123648 | 0.77033

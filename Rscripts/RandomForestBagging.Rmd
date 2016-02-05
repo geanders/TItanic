@@ -1,0 +1,68 @@
+---
+title: "Bagging and Random Forest Models"
+author: "Brooke Anderson"
+date: "February 5, 2016"
+output: pdf_document
+---
+
+```{r message = FALSE, echo = FALSE}
+knitr::opts_knit$set(fig.path = '../figures/RandomForest-',
+                     root.dir = '..')
+```
+
+```{r warning = TRUE, message = TRUE}
+library(dplyr)
+library(tree)
+library(randomForest)
+library(caret)
+```
+
+
+Read in the data:
+
+```{r}
+train <- read.csv("data/train.csv") %>%
+  mutate(Survived = factor(Survived),
+         Pclass = ordered(Pclass),
+         Sex = factor(Sex)) %>%
+  select(Survived, Pclass, Sex, Age, Fare, Embarked)
+test <- read.csv("data/test.csv") %>%
+  mutate(Pclass = ordered(Pclass),
+         Sex = factor(Sex))  %>%
+  select(Pclass, Sex, Age, Fare, Embarked)
+test_ids <- read.csv("data/test.csv") %>% 
+            select(PassengerId)
+```
+
+Try fitting a simple tree model: 
+
+```{r}
+tree_1 <- tree(Survived ~ ., data = train)
+plot(tree_1)
+text(tree_1)
+```
+
+Try a random forest: 
+
+```{r}
+rf_mod_1 <- train(Survived ~ .,
+                   data = train, 
+                   method = "rf",
+                   metric = "Accuracy",
+                   preProc = c("center", "scale"),
+                   tuneLength = 20,
+                   trControl = trainControl(method = "cv", number = 7))
+rf_mod_1
+```
+
+```{r}
+test_preds_1 <- predict(rf_mod_1, newdata = test)
+test_preds <- rep(0, nrow(test))
+test_preds[complete.cases(test)] <- as.numeric(test_preds_1) - 1
+out <- cbind(test_ids, Survived = test_preds)
+write.csv(out, file = "predictions/rf_cv.csv",
+          row.names = FALSE)
+```
+
+When I tested the best random forest model (mtry picked using 10-fold cross-validation) on Kaggle, I got an accuracy of 0.77033.
+
