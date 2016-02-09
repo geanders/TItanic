@@ -64,6 +64,21 @@ I don't think this should be a concern-- I think it's just where the training so
 plot(svm_fit)
 ```
 
+This training is only tuning $C$, not $\sigma$. From the JSS article on `caret`, explaining this (Kuhn 2008): 
+
+> "For this particular model, it turns out that there is an analytical method for directly estimating
+a suitable value of $\sigma$ from the training data (Caputo et al. 2002). By default, the train
+function uses the sigest function in the kernlab package (Karatzoglou et al. 2004) to initialize
+this parameter. In doing this, the value of the cost parameter C is the only tuning parameter."
+
+Regarding the tuning length for SVM, from the same paper: 
+
+> "`tuneLength`: controls the size of the default grid of tuning parameters. For each model,
+train will select a grid of complexity parameters as candidate values. For the SVM
+model, the function will tune over C = $10^{-1}$, $1$, $10$. To expand the size of the default
+list, the tuneLength argument can be used. By selecting tuneLength = 5, values of C
+ranging from 0.1 to 1,000 are evaluated."
+
 ```{r}
 preds <- predict(svm_fit, newdata = test)
 ```
