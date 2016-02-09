@@ -17,15 +17,6 @@ library(caret) # Machine learning
 library(ggplot2) # Plotting
 ```
 
-## Cross-validation methods
-
-Method | Bias | Variance | Speed
--------|------|----------|--------
-Validation set | | | 
-10-fold CV | | | 
-5-fold CV | | | 
-Leave-one-out CV | | | 
-
 ## Overview of example
 
 For the cross-validation, I'm going to check out two things about the k-nearest neighbors model using `Survived`, `Pclass`, and `Sex` as predictors. First, I'm going to see how accuracy compares with two choices: 
@@ -174,7 +165,7 @@ write.csv(out, file = "predictions/knn_orderedPclass_all0.csv",
 
 Here, the Kaggle results were 0.74641 for the model with ordered `Pclass` and 0.74163 for the model with unordered `Pclass`.
 
-Then, I tried ... : 
+Then, I tried: 
 
 ```{r}
 prob_surv <- mean(train$Survived == 1)
@@ -197,3 +188,7 @@ write.csv(out, file = "predictions/knn_orderedPclass_exact.csv",
 ```
 
 Here, the Kaggle results were 0.69378 for the model with ordered `Pclass` and 0.68421 for the model with unordered `Pclass`.
+
+Interesting comment from one of the Kaggle forums about Kaggle accuracy being lower than CV estimates from `caret`: 
+
+> "Here are a few possibilities for why the score on the public leaderboard may be lower than the CV estimate. You're right that this can happen if the distributions of feature and outcome values in the training set doesn't reflect the test set. In a very small dataset like this, there may even be some unique cases in the test set that are not like any in the training set. There will certainly be noise in the data -- cases with nearly the same feature values, but opposite outcomes. One or the other will not be predicted correctly. If one case is in the training data and the other in test, then if the classifier correctly predicts the case in train, the one in test will be mispredicted. Depending on how CV was used, it may not actually be producing a meaningful estimate of the out-of-sample error. For instance, in the R caret package, CV is used internally in the train() function to do parameter tuning. train() will return the accuracy gotten from CV, but it's safer to do your own CV outside of train(). And...even though the accuracy was estimated with CV, there may still be overfitting."

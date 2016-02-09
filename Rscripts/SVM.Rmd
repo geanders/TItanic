@@ -1,0 +1,192 @@
+---
+title: "Support Vector Machines"
+author: "Brooke Anderson"
+date: "February 9, 2016"
+output: pdf_document
+---
+
+```{r message = FALSE, echo = FALSE}
+knitr::opts_knit$set(fig.path = '../figures/SVM-',
+                     root.dir = '..')
+```
+
+```{r message = FALSE, warning = FALSE}
+library(dplyr) # Data wrangling
+library(tidyr) # Data wrangling
+library(caret) # Machine learning
+library(ggplot2) # Plotting
+library(VIM) # k-NN imputation
+library(stringr) # For string manipulation
+```
+
+```{r}
+train <- read.csv("data/train.csv") %>%
+         select(Survived, Pclass, Sex, Age) %>%
+         mutate(Survived = factor(Survived),
+         Pclass = ordered(Pclass),
+         Sex = factor(Sex))
+test <- read.csv("data/test.csv") %>%
+        select(Pclass, Sex, Age) %>%
+        mutate(Pclass = ordered(Pclass),
+        Sex = factor(Sex))
+test_ids <- read.csv("data/test.csv") %>% 
+            select(PassengerId)
+```
+
+The [`caret` webpage](http://topepo.github.io/caret/bytag.html) has a great list of all the different models that you can fit using `method`, including the tuning parameters for each.
+
+## Fitting an SVM using `train`
+
+```{r warning=FALSE, message=FALSE}
+set.seed(1201)
+svm_fit <- train(Survived ~ .,
+                data = train,
+                method = "svmRadial",
+                preProc = c("center", "scale"),
+                tuneLength = 10,
+                trControl = trainControl(method = "cv"))
+svm_fit
+```
+
+Note: Running this required me to install a new package (`kernlab`), which I evidently didn't have installed yet. I got the help for this new package using `??"kernlab"`. 
+
+If I used a bootstrap method, I got the following warning message when I ran the above code (a bunch of them): 
+
+```
+Warning message:
+In data.row.names(row.names, rowsi, i) :
+  some row.names duplicated: ...
+```
+
+I don't think this should be a concern-- I think it's just where the training sometimes resamples the same rows if you do something like bootstrapping.
+
+```{r fig.width = 5, fig.height = 3}
+plot(svm_fit)
+```
+
+```{r}
+preds <- predict(svm_fit, newdata = test)
+```
+
+This still leaves us without predictions for our missing values-- it only predicts for complete cases in the testing data: 
+
+```{r}
+length(preds)
+dim(test)
+sum(complete.cases(test))
+```
+
+This time, to handle the missing values, I tried imputing the `test` data using k-NN (with Gower for categorical variables) to "fill in" missing values before I tried to predict all the observations.
+
+```{r}
+test2 <- kNN(test)
+head(test2)
+```
+
+Notice that this imputation adds some columns to let you know which variables were imputed for each observation.
+
+```{r}
+preds2 <- predict(svm_fit, newdata = test2)
+length(preds2)
+```
+
+Now I'll write that out and test it on Kaggle...
+
+```{r}
+out <- data.frame(PassengerId = test_ids,
+                  Survived = as.numeric(as.character(preds2)))
+write.csv(out, file = "predictions/SVM_Pclass_Sex_Age_imputed.csv",
+          row.names = FALSE)
+```
+
+The Kaggle score was 0.75598.
+
+For a comparison, I also submitted a set of predictions where I always used 0 as the prediction for observations with one or more missing predictors: 
+
+```{r}
+out2 <- data.frame(PassengerId = test_ids,
+                  Survived = 0)
+out2[complete.cases(test), "Survived"] <- as.numeric(as.character(preds))
+write.csv(out2, file = "predictions/SVM_Pclass_Sex_Age_all0.csv",
+          row.names = FALSE)
+```
+
+The Kaggle score for these predictions was 0.75598, which is exactly the same as when imputing data. 
+
+If I compare the results of the two predictions, there are only three test observations that have different answers for the two methods of handling missing values:
+
+```{r}
+sum(out != out2)
+```
+
+This is out of `r sum(!complete.cases(test))` observations in the testing dataset with missing predictors, so the two methods of handling test observations with missing data seem to agree pretty well (at least in this case and for these predictive variables).
+
+## Including more predictors
+
+Next, I'll try to include more of the predictive variables: 
+
+```{r}
+train <- read.csv("data/train.csv") %>%
+         select(Survived, Pclass, Name, Sex, Age, SibSp, Parch, Fare, Embarked) %>%
+         mutate(Survived = factor(Survived),
+         Pclass = ordered(Pclass),
+         Name = gsub("[\\,\\.\\ ]", "", str_extract(Name, ",\\ .+?\\.")),
+         Name = factor(ifelse(Name %in% c("Mr", "Mrs", "Miss", "Master"),
+                              Name, "Other")),
+         Sex = factor(Sex),
+         Embarked = factor(ifelse(Embarked == "", NA, as.character(Embarked))))
+test <- read.csv("data/test.csv") %>%
+         select(Pclass, Name, Sex, Age, SibSp, Parch, Fare, Embarked) %>%
+         mutate(Pclass = ordered(Pclass),
+         Name = gsub("[\\,\\.\\ ]", "", str_extract(Name, ",\\ .+?\\.")),
+         Name = factor(ifelse(Name %in% c("Mr", "Mrs", "Miss", "Master"),
+                              Name, "Other")),
+         Sex = factor(Sex),
+         Embarked = factor(ifelse(Embarked == "", NA, as.character(Embarked))))
+test_ids <- read.csv("data/test.csv") %>% 
+            select(PassengerId)
+```
+
+```{r warning=FALSE, message=FALSE}
+set.seed(1201)
+svm_fit <- train(Survived ~ .,
+                data = train,
+                method = "svmRadial",
+                preProc = c("center", "scale"),
+                tuneLength = 10,
+                trControl = trainControl(method = "cv"))
+svm_fit
+```
+
+This time, to handle the missing values, I tried imputing the `test` data using k-NN (with Gower for categorical variables) to "fill in" missing values before I tried to predict all the observations.
+
+```{r}
+test2 <- kNN(test)
+head(test2)
+```
+
+Notice that this imputation adds some columns to let you know which variables were imputed for each observation.
+
+```{r}
+preds2 <- predict(svm_fit, newdata = test2)
+length(preds2)
+```
+
+Now I'll write that out and test it on Kaggle...
+
+```{r}
+out <- data.frame(PassengerId = test_ids,
+                  Survived = as.numeric(as.character(preds2)))
+write.csv(out, file = "predictions/SVM_kitchen_sink_imputed.csv",
+          row.names = FALSE)
+```
+
+The Kaggle score was 0.78469, which is the best I've gotten so far (but probably still not as good as some tree ensembles that include title, based on the forums / tutorials).
+
+## Some interesting comments from the forums
+
+Regarding what a "good" score would be: 
+
+> "82% would be a very good score. 84% would be an amazing score. If you're getting 84 then I think there's very little left that you can learn from plugging away any further on this challenge and you should move on to new challenges. Considering that most people above 0.85 are almost definitely cheating (it's a "toy" competition with no prize), a score of 0.82 would put you in roughly the top 0.5% of submissions -- a great result. Your profile says you've got 0.785 at the moment, so there's some room for improvement. Also, keep in mind that the public ranking is not going to be the final ranking." 
+
+> "The problem with predicting NA's is, that you also add noise in your inputs. If it is still worth it, depends very much on the data. In this challenge i remember that using name features could be used to guess missing age values (Master for young boys etc.). This is a good way, as the name is otherwise hard to extract information out. By using the name for predicting the NA's you add information so to say. This is the way to go for increasing the accuracy: Try to extract features which contain information. If youre able to enrichen your model with more information you might get very good results in this. It is also partly possible to see family relationships through the names, which can be again used for increasing the accuracy. Scores till 85% and probably 90% are possible without any cheating."

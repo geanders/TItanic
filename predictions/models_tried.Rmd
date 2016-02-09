@@ -37,3 +37,5 @@ Sex, Age, Pclass_ordered, Sex:Pclass_ordered | 0.8096244 | 0.69378
 Sex, Age, Pclass_unordered, Sex:Pclass_unordered | 0.8096244 | 0.68421
 **random forest** | |
 mtry picked with CV, Pclass, Sex, Age, Fare, Embarked | .8123648 | 0.77033
+**SVM** | | 
+SVM, kitchen sink, imputed testing with missing | 0.8272926  |  0.7846
