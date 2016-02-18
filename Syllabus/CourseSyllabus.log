@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  9 FEB 2016 09:30
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  18 FEB 2016 13:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -311,8 +311,43 @@ Underfull \hbox (badness 10000) in paragraph at lines 183--191
 
  []
 
+
+Overfull \hbox (51.9094pt too wide) in paragraph at lines 192--202
+\OT1/ptm/m/it/10.95 Competition: \OT1/ptm/m/n/10.95 Kag-gle: Bike shar-ing de-m
+and: $\OT1/pcr/m/n/10.95 https : / / www . kaggle . com / c / bike-[]sharing-[]
+demand$ 
+ []
+
 [3]
-Underfull \hbox (badness 10000) in paragraph at lines 219--226
+Overfull \hbox (51.9094pt too wide) in paragraph at lines 203--207
+\OT1/ptm/m/it/10.95 Competition: \OT1/ptm/m/n/10.95 Kag-gle: Bike shar-ing de-m
+and: $\OT1/pcr/m/n/10.95 https : / / www . kaggle . com / c / bike-[]sharing-[]
+demand$ 
+ []
+
+
+Overfull \hbox (51.9094pt too wide) in paragraph at lines 208--212
+\OT1/ptm/m/it/10.95 Competition: \OT1/ptm/m/n/10.95 Kag-gle: Bike shar-ing de-m
+and: $\OT1/pcr/m/n/10.95 https : / / www . kaggle . com / c / bike-[]sharing-[]
+demand$ 
+ []
+
+
+Overfull \hbox (51.9094pt too wide) in paragraph at lines 213--218
+\OT1/ptm/m/it/10.95 Competition: \OT1/ptm/m/n/10.95 Kag-gle: Bike shar-ing de-m
+and: $\OT1/pcr/m/n/10.95 https : / / www . kaggle . com / c / bike-[]sharing-[]
+demand$ 
+ []
+
+
+Overfull \hbox (51.9094pt too wide) in paragraph at lines 219--225
+\OT1/ptm/m/it/10.95 Competition: \OT1/ptm/m/n/10.95 Kag-gle: Bike shar-ing de-m
+and: $\OT1/pcr/m/n/10.95 https : / / www . kaggle . com / c / bike-[]sharing-[]
+demand$ 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 219--225
 
  []
 
@@ -331,7 +366,7 @@ Here is how much of TeX's memory you used:
 pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/
 local/texlive/2015/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texl
 ive/2015/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on CourseSyllabus.pdf (4 pages, 114758 bytes).
+Output written on CourseSyllabus.pdf (4 pages, 115538 bytes).
 PDF statistics:
  39 PDF objects out of 1000 (max. 8388607)
  26 compressed objects within 1 object stream
